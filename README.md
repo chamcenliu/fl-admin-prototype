@@ -2,7 +2,7 @@
 
 本目录是根据 `FL ADMIN PROTOTYPE.rp` 和 `axure-export/` 重建的代码版原型。Axure 导出文件只作为设计依据，实际页面由 `src/` 中的代码生成。
 
-在线预览：<https://chamcenliu.github.io/freelog-admin-prototype/>
+在线预览：<https://chamcenliu.github.io/fl-admin-prototype/>
 
 ## 本地运行
 
