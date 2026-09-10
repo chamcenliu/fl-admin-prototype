@@ -1,4 +1,4 @@
-import { dashboardStats, navGroups, pageDefinitions, recentTasks } from "./data.js";
+import { dashboardStats, navGroups, pageDefinitions, recentTasks, userManagementRows } from "./data.js";
 
 const app = document.querySelector("#app");
 const state = {
@@ -6,6 +6,15 @@ const state = {
   search: "",
   filter: "全部状态",
   selected: new Set(),
+  users: userManagementRows.map(user => ({ ...user, tags: [...user.tags], contacts: [...user.contacts] })),
+  userSearchDraft: "",
+  userSearch: "",
+  userTagFilters: new Set(),
+  userSort: "recent",
+  userDateStart: "2020-10-23",
+  userDateEnd: "2020-11-21",
+  userDateActive: false,
+  userPage: 1,
   collapsed: false,
   loggedIn: sessionStorage.getItem("fl-admin-session") !== "signed-out"
 };
@@ -134,6 +143,59 @@ function renderListPage(def, meta) {
     </section>`;
 }
 
+const userTagOptions = ["小说", "测试", "节点商", "资源作者", "消费者"];
+
+function filteredUsers() {
+  const needle = state.userSearch.trim().toLowerCase();
+  const activeTags = [...state.userTagFilters];
+  const rows = state.users.filter(user => {
+    const matchesSearch = !needle || [user.name, ...user.contacts].some(value => value.toLowerCase().includes(needle));
+    const matchesTags = !activeTags.length || activeTags.every(tag => user.tags.includes(tag));
+    const matchesDate = !state.userDateActive || (user.registeredAt >= state.userDateStart && user.registeredAt <= state.userDateEnd);
+    return matchesSearch && matchesTags && matchesDate;
+  });
+  const sortKey = { resources: "resources", exhibits: "nodes", contracts: "contracts" }[state.userSort];
+  return sortKey ? [...rows].sort((a, b) => b[sortKey] - a[sortKey]) : rows;
+}
+
+function renderUserTags(user) {
+  return `<div class="user-name"><button class="record-link" data-user-detail="${user.id}">${esc(user.name)}</button><div class="user-tags">${user.tags.map(tag => `<span>${esc(tag)}<button type="button" data-remove-tag="${user.id}" data-tag="${esc(tag)}" aria-label="移除${esc(tag)}标签">×</button></span>`).join("")}<button class="add-tag-link" type="button" data-add-tags="${user.id}">+标签</button></div></div>`;
+}
+
+function renderUserActions(user) {
+  if (user.status === "冻结") return `<button data-freeze-detail="${user.id}">详情</button><button data-restore-user="${user.id}">恢复</button>`;
+  if (user.status === "待审核") return `<button data-review-user="${user.id}">审核</button>`;
+  return `<button data-freeze-user="${user.id}">冻结</button>`;
+}
+
+function renderUsersPage() {
+  const rows = filteredUsers();
+  const visibleIds = rows.map(user => user.id);
+  const allSelected = visibleIds.length > 0 && visibleIds.every(id => state.selected.has(id));
+  const start = state.userPage === 1 ? 1 : (state.userPage - 1) * 10 + 1;
+  const end = state.userPage === 4 ? 38 : state.userPage * 10;
+  const dateLabel = `${state.userDateStart.replaceAll("-", "/")} - ${state.userDateEnd.replaceAll("-", "/")}`;
+  return `
+    <div class="page-heading users-heading"><div><span class="eyebrow">用户中心</span><h1>用户管理</h1><p>查询用户资料并处理标签、审核和账号状态。</p></div></div>
+    <section class="panel user-panel">
+      ${state.selected.size ? `
+        <div class="user-selection-bar"><strong>已选择 ${state.selected.size} 个用户</strong><button class="primary-button" id="batch-add-tags" type="button">添加标签</button><button class="text-button" id="clear-user-selection" type="button">取消选择</button></div>` : `
+        <div class="user-filter-bar">
+          <div class="tag-filter-group"><span>标签：</span>${["消费者", "节点商", "小说", "测试"].map(tag => `<button type="button" class="filter-chip ${state.userTagFilters.has(tag) ? "active" : ""}" data-filter-tag="${tag}">${tag}</button>`).join("")}<button class="manage-tags" id="manage-user-tags" type="button">⚙ 管理标签</button></div>
+          <div class="date-filter-group"><span>注册时间：</span><button class="date-range-button ${state.userDateActive ? "active" : ""}" id="user-date-filter" type="button">${dateLabel}<b>▾</b></button></div>
+        </div>`}
+      <div class="user-search-bar">
+        <label class="search-box user-search"><span>${icons.search}</span><input id="user-search" value="${esc(state.userSearchDraft)}" placeholder="请输入用户名、注册邮箱/手机号进行搜索" /></label>
+        <button class="primary-button" id="user-search-button" type="button">搜索</button>
+        ${(state.userSearch || state.userTagFilters.size || state.userDateActive) ? `<button class="secondary-button" id="reset-user-filters" type="button">重置</button>` : ""}
+        <label class="user-sort-label">排序：<select id="user-sort" aria-label="用户排序"><option value="recent" ${state.userSort === "recent" ? "selected" : ""}>最近注册</option><option value="resources" ${state.userSort === "resources" ? "selected" : ""}>资源发布最多</option><option value="exhibits" ${state.userSort === "exhibits" ? "selected" : ""}>展品发布最多</option><option value="contracts" ${state.userSort === "contracts" ? "selected" : ""}>消费合约最多</option></select></label>
+      </div>
+      <div class="table-wrap user-table-wrap"><table class="user-table"><thead><tr><th class="checkbox-cell"><input id="select-all-users" type="checkbox" ${allSelected ? "checked" : ""} aria-label="全选用户" /></th><th>用户</th><th>最近登录</th><th>发布资源数</th><th>运营节点数</th><th>消费合约数</th><th>交易次数</th><th>代币余额</th><th>注册手机号/邮箱</th><th>注册时间</th><th>账号状态</th><th class="action-column">操作</th></tr></thead>
+      <tbody>${rows.length ? rows.map(user => `<tr class="${state.selected.has(user.id) ? "selected-row" : ""}"><td class="checkbox-cell"><input type="checkbox" data-select-user="${user.id}" ${state.selected.has(user.id) ? "checked" : ""} aria-label="选择用户 ${esc(user.name)}" /></td><td>${renderUserTags(user)}</td><td>${esc(user.lastLogin)}</td><td>${user.resources}</td><td>${user.nodes}</td><td>${user.contracts}</td><td>${user.trades}</td><td>${user.balance.toLocaleString("zh-CN")}</td><td><div class="contact-list">${user.contacts.map(contact => `<span>${esc(contact)}<button type="button" data-copy="${esc(contact)}">复制</button></span>`).join("")}</div></td><td>${user.registeredAt}</td><td><span class="status ${statusClass(user.status)}">${user.status}</span></td><td class="row-actions user-row-actions">${renderUserActions(user)}</td></tr>`).join("") : `<tr><td colspan="12"><div class="empty-state"><b>⌕</b><strong>没有匹配的用户</strong><span>调整用户名、标签或注册时间后重试。</span><button class="secondary-button" id="empty-user-reset" type="button">清除筛选</button></div></td></tr>`}</tbody></table></div>
+      <footer class="user-pagination"><span>${start}- ${end} of 38</span><div class="page-stepper"><button id="user-prev-page" type="button" ${state.userPage === 1 ? "disabled" : ""} aria-label="上一页">‹</button><strong>${state.userPage} / 4</strong><button id="user-next-page" type="button" ${state.userPage === 4 ? "disabled" : ""} aria-label="下一页">›</button></div><label><input id="user-page-input" type="number" min="1" max="4" value="${state.userPage}" aria-label="页码" /><button class="secondary-button" id="user-page-go" type="button">Go</button></label></footer>
+    </section>`;
+}
+
 function renderForm(meta, mode = "create") {
   const noun = meta.label.replace("管理", "");
   return `
@@ -159,6 +221,116 @@ function showModal({ title, body, confirm = "确认", danger = false, onConfirm 
   root.querySelector(".modal-cancel").onclick = close;
   root.querySelector(".modal-backdrop").onclick = event => { if (event.target === event.currentTarget) close(); };
   root.querySelector(".modal-confirm").onclick = () => { close(); onConfirm?.(); };
+}
+
+function showUserDialog({ title, content, confirm = "确认", danger = false, wide = false, onConfirm, onOpen }) {
+  const root = document.querySelector("#modal-root");
+  root.innerHTML = `<div class="modal-backdrop"><section class="modal user-dialog ${wide ? "wide" : ""}" role="dialog" aria-modal="true" aria-labelledby="user-dialog-title"><button class="modal-close" type="button" aria-label="关闭">${icons.close}</button><h2 id="user-dialog-title">${title}</h2><div class="user-dialog-content">${content}</div><footer><button class="secondary-button modal-cancel" type="button">取消</button><button class="${danger ? "danger-button" : "primary-button"} modal-confirm" type="button">${confirm}</button></footer></section></div>`;
+  const dialog = root.querySelector(".user-dialog");
+  const close = () => root.replaceChildren();
+  root.querySelector(".modal-close").onclick = close;
+  root.querySelector(".modal-cancel").onclick = close;
+  root.querySelector(".modal-backdrop").onclick = event => { if (event.target === event.currentTarget) close(); };
+  root.querySelector(".modal-confirm").onclick = () => { if (onConfirm?.(dialog) !== false) close(); };
+  onOpen?.(dialog, close);
+}
+
+function openAddTagsDialog(userIds) {
+  const selectedUsers = state.users.filter(user => userIds.includes(user.id));
+  const existingTags = new Set(selectedUsers.flatMap(user => user.tags));
+  showUserDialog({
+    title: "添加标签",
+    content: `<p>为${selectedUsers.length > 1 ? `已选择的 ${selectedUsers.length} 个用户` : `用户 ${esc(selectedUsers[0]?.name || "")}`}添加标签。</p><div class="tag-choice-list">${userTagOptions.map(tag => `<label class="tag-choice"><input type="checkbox" name="user-tag" value="${tag}" ${existingTags.has(tag) ? "checked" : ""} /><span>${tag}</span></label>`).join("")}</div>`,
+    onConfirm(dialog) {
+      const tags = [...dialog.querySelectorAll('input[name="user-tag"]:checked')].map(input => input.value);
+      selectedUsers.forEach(user => { user.tags = [...new Set([...user.tags, ...tags])]; });
+      state.selected.clear();
+      render();
+      toast("标签已添加");
+    }
+  });
+}
+
+function openFreezeDialog(userId) {
+  const user = state.users.find(item => item.id === userId);
+  if (!user) return;
+  const reasons = ["抄袭、侵权", "垃圾广告", "色情、暴力", "不实信息", "欺诈", "恶意操作"];
+  showUserDialog({
+    title: "冻结账户",
+    confirm: "冻结",
+    danger: true,
+    content: `<p>冻结后，${esc(user.name)} 将无法继续使用该账号。</p><fieldset class="reason-list"><legend>冻结原因</legend>${reasons.map((reason, index) => `<label><input type="radio" name="freeze-reason" value="${reason}" ${index === 0 ? "checked" : ""} />${reason}</label>`).join("")}</fieldset><label class="dialog-field"><span>备注</span><textarea id="freeze-note" rows="3" placeholder="添加备注（选填）"></textarea></label>`,
+    onConfirm(dialog) {
+      const reason = dialog.querySelector('input[name="freeze-reason"]:checked')?.value;
+      const note = dialog.querySelector("#freeze-note").value.trim();
+      user.status = "冻结";
+      user.freezeReason = note ? `${reason}：${note}` : reason;
+      render();
+      toast(`${user.name} 已冻结`);
+    }
+  });
+}
+
+function openRestoreDialog(userId) {
+  const user = state.users.find(item => item.id === userId);
+  if (!user) return;
+  showUserDialog({
+    title: "恢复账户",
+    confirm: "恢复",
+    content: `<p>确认要恢复该账号的使用吗？</p><div class="dialog-user-line"><strong>${esc(user.name)}</strong><span>当前状态：冻结</span></div>`,
+    onConfirm() {
+      user.status = "正常";
+      user.freezeReason = "";
+      render();
+      toast(`${user.name} 已恢复`);
+    }
+  });
+}
+
+function openReviewDialog(userId) {
+  const user = state.users.find(item => item.id === userId);
+  if (!user) return;
+  showUserDialog({
+    title: "审核用户",
+    confirm: "确认审核",
+    content: `<p>请选择 ${esc(user.name)} 的审核结果。</p><div class="review-choices"><label><input type="radio" name="review-result" value="正常" checked /><span><strong>通过审核</strong><small>账号状态改为正常</small></span></label><label><input type="radio" name="review-result" value="冻结" /><span><strong>拒绝申请</strong><small>账号将被冻结</small></span></label></div>`,
+    onConfirm(dialog) {
+      user.status = dialog.querySelector('input[name="review-result"]:checked').value;
+      user.freezeReason = user.status === "冻结" ? "审核未通过" : "";
+      render();
+      toast(`${user.name} 审核完成`);
+    }
+  });
+}
+
+function openDateDialog() {
+  showUserDialog({
+    title: "设置注册时间",
+    confirm: "应用",
+    content: `<p>选择用户注册日期范围。</p><div class="date-dialog-grid"><label><span>开始日期</span><input id="user-date-start" type="date" value="${state.userDateStart}" /></label><i>至</i><label><span>结束日期</span><input id="user-date-end" type="date" value="${state.userDateEnd}" /></label></div><button class="text-button clear-date-range" type="button">清除日期筛选</button><p class="dialog-error" role="alert"></p>`,
+    onOpen(dialog, close) {
+      dialog.querySelector(".clear-date-range").onclick = () => {
+        state.userDateActive = false;
+        state.userPage = 1;
+        close();
+        render();
+      };
+    },
+    onConfirm(dialog) {
+      const start = dialog.querySelector("#user-date-start").value;
+      const end = dialog.querySelector("#user-date-end").value;
+      if (!start || !end || start > end) {
+        dialog.querySelector(".dialog-error").textContent = "请选择有效的开始和结束日期。";
+        return false;
+      }
+      state.userDateStart = start;
+      state.userDateEnd = end;
+      state.userDateActive = true;
+      state.userPage = 1;
+      state.selected.clear();
+      render();
+    }
+  });
 }
 
 function toast(message) {
@@ -194,6 +366,93 @@ function bindForm(meta) {
   updateCount();
 }
 
+function bindUsersPage() {
+  const searchInput = document.querySelector("#user-search");
+  const commitSearch = () => {
+    state.userSearchDraft = searchInput.value;
+    state.userSearch = searchInput.value;
+    state.userPage = 1;
+    state.selected.clear();
+    render();
+  };
+  searchInput.oninput = event => { state.userSearchDraft = event.target.value; };
+  searchInput.onkeydown = event => { if (event.key === "Enter") commitSearch(); };
+  document.querySelector("#user-search-button").onclick = commitSearch;
+  document.querySelector("#user-sort").onchange = event => { state.userSort = event.target.value; state.userPage = 1; state.selected.clear(); render(); };
+  document.querySelectorAll("[data-filter-tag]").forEach(button => button.onclick = () => {
+    const tag = button.dataset.filterTag;
+    state.userTagFilters.has(tag) ? state.userTagFilters.delete(tag) : state.userTagFilters.add(tag);
+    state.userPage = 1;
+    state.selected.clear();
+    render();
+  });
+  document.querySelector("#manage-user-tags")?.addEventListener("click", () => { location.hash = "#/user-tags"; });
+  document.querySelector("#user-date-filter")?.addEventListener("click", openDateDialog);
+  const resetFilters = () => {
+    state.userSearchDraft = "";
+    state.userSearch = "";
+    state.userTagFilters.clear();
+    state.userDateActive = false;
+    state.userSort = "recent";
+    state.userPage = 1;
+    state.selected.clear();
+    render();
+  };
+  document.querySelector("#reset-user-filters")?.addEventListener("click", resetFilters);
+  document.querySelector("#empty-user-reset")?.addEventListener("click", resetFilters);
+  document.querySelector("#clear-user-selection")?.addEventListener("click", () => { state.selected.clear(); render(); });
+  document.querySelector("#batch-add-tags")?.addEventListener("click", () => openAddTagsDialog([...state.selected]));
+  document.querySelector("#select-all-users").onchange = event => {
+    state.selected.clear();
+    if (event.target.checked) filteredUsers().forEach(user => state.selected.add(user.id));
+    render();
+  };
+  document.querySelectorAll("[data-select-user]").forEach(input => input.onchange = () => {
+    input.checked ? state.selected.add(input.dataset.selectUser) : state.selected.delete(input.dataset.selectUser);
+    render();
+  });
+  document.querySelectorAll("[data-add-tags]").forEach(button => button.onclick = () => openAddTagsDialog([button.dataset.addTags]));
+  document.querySelectorAll("[data-remove-tag]").forEach(button => button.onclick = () => {
+    const user = state.users.find(item => item.id === button.dataset.removeTag);
+    if (!user) return;
+    user.tags = user.tags.filter(tag => tag !== button.dataset.tag);
+    render();
+    toast("标签已移除");
+  });
+  document.querySelectorAll("[data-copy]").forEach(button => button.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(button.dataset.copy);
+      toast("已复制到剪贴板");
+    } catch {
+      const helper = document.createElement("textarea");
+      helper.value = button.dataset.copy;
+      document.body.append(helper);
+      helper.select();
+      document.execCommand("copy");
+      helper.remove();
+      toast("已复制到剪贴板");
+    }
+  });
+  document.querySelectorAll("[data-freeze-user]").forEach(button => button.onclick = () => openFreezeDialog(button.dataset.freezeUser));
+  document.querySelectorAll("[data-restore-user]").forEach(button => button.onclick = () => openRestoreDialog(button.dataset.restoreUser));
+  document.querySelectorAll("[data-review-user]").forEach(button => button.onclick = () => openReviewDialog(button.dataset.reviewUser));
+  document.querySelectorAll("[data-freeze-detail], [data-user-detail]").forEach(button => button.onclick = () => {
+    const id = button.dataset.freezeDetail || button.dataset.userDetail;
+    const user = state.users.find(item => item.id === id);
+    showUserDialog({ title: user.status === "冻结" ? "冻结原因" : "用户详情", confirm: "知道了", content: user.status === "冻结" ? `<div class="freeze-detail"><strong>${esc(user.freezeReason || "未填写原因")}</strong><span>${esc(user.name)}</span></div>` : `<div class="user-summary"><strong>${esc(user.name)}</strong><span>${esc(user.contacts.join(" · "))}</span><span>注册时间：${user.registeredAt}</span><span>账号状态：${user.status}</span></div>` });
+  });
+  const goToPage = page => {
+    state.userPage = Math.min(4, Math.max(1, Number(page) || 1));
+    state.selected.clear();
+    render();
+    toast(`已切换至第 ${state.userPage} 页`);
+  };
+  document.querySelector("#user-prev-page").onclick = () => goToPage(state.userPage - 1);
+  document.querySelector("#user-next-page").onclick = () => goToPage(state.userPage + 1);
+  document.querySelector("#user-page-go").onclick = () => goToPage(document.querySelector("#user-page-input").value);
+  document.querySelector("#user-page-input").onkeydown = event => { if (event.key === "Enter") goToPage(event.target.value); };
+}
+
 function bindList(def, meta) {
   document.querySelector("#search").addEventListener("input", event => { state.search = event.target.value; window.clearTimeout(window.searchTimer); window.searchTimer = window.setTimeout(render, 180); });
   document.querySelector("#status-filter").onchange = event => { state.filter = event.target.value; state.selected.clear(); render(); };
@@ -222,11 +481,13 @@ function render() {
   let content;
   if (route[1] === "create" || route[1] === "edit") content = renderForm(meta, route[1]);
   else if (pageId === "dashboard") content = renderDashboard();
+  else if (pageId === "users") content = renderUsersPage();
   else content = renderListPage(pageDefinitions[pageId] || pageDefinitions.resources, meta);
   app.innerHTML = shell(content);
   bindShell();
   if (route[1]) bindForm(meta);
   else if (pageId === "dashboard") bindDashboard();
+  else if (pageId === "users") bindUsersPage();
   else bindList(pageDefinitions[pageId] || pageDefinitions.resources, meta);
 }
 
@@ -235,6 +496,13 @@ window.addEventListener("hashchange", () => {
   state.search = "";
   state.filter = "全部状态";
   state.selected.clear();
+  if (state.page !== "users") {
+    state.userSearchDraft = "";
+    state.userSearch = "";
+    state.userTagFilters.clear();
+    state.userDateActive = false;
+    state.userPage = 1;
+  }
   render();
 });
 
@@ -281,6 +549,14 @@ function registerWebMcp() {
     execute(input) {
       if (!input || (input.query !== undefined && typeof input.query !== "string") || (input.status !== undefined && typeof input.status !== "string")) throw new Error("筛选参数格式错误");
       if (state.page === "dashboard" || !pageDefinitions[state.page]) throw new Error("当前页面不是可筛选的列表");
+      if (state.page === "users") {
+        state.userSearchDraft = input.query || "";
+        state.userSearch = input.query || "";
+        state.userPage = 1;
+        state.selected.clear();
+        render();
+        return { pageId: state.page, query: state.userSearch };
+      }
       state.search = input.query || "";
       state.filter = input.status || pageDefinitions[state.page].filters[0];
       state.selected.clear();
