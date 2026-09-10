@@ -32,6 +32,69 @@ export const navGroups = [
   ] }
 ];
 
+export const userManagementRows = [
+  {
+    id: "user-001",
+    name: "chtes",
+    tags: ["测试", "资源作者"],
+    lastLogin: "今天",
+    resources: 20,
+    nodes: 1,
+    contracts: 3,
+    trades: 2,
+    balance: 1000,
+    contacts: ["138 1234 1234", "chtes@qq.com"],
+    registeredAt: "2020-09-01",
+    status: "正常",
+    freezeReason: ""
+  },
+  {
+    id: "user-002",
+    name: "chlll",
+    tags: ["资源作者"],
+    lastLogin: "一周前",
+    resources: 0,
+    nodes: 0,
+    contracts: 0,
+    trades: 3,
+    balance: 200,
+    contacts: ["chtes@qq.com"],
+    registeredAt: "2020-09-01",
+    status: "待审核",
+    freezeReason: ""
+  },
+  {
+    id: "user-003",
+    name: "chtes01",
+    tags: [],
+    lastLogin: "07-07",
+    resources: 20,
+    nodes: 1,
+    contracts: 3,
+    trades: 1,
+    balance: 1000,
+    contacts: ["138 1234 1234"],
+    registeredAt: "2020-09-01",
+    status: "冻结",
+    freezeReason: "恶意操作"
+  },
+  {
+    id: "user-004",
+    name: "chlll01",
+    tags: ["测试"],
+    lastLogin: "2019-07-07",
+    resources: 0,
+    nodes: 0,
+    contracts: 0,
+    trades: 0,
+    balance: 200,
+    contacts: ["138 1234 1234", "chtes@qq.com"],
+    registeredAt: "2018-08-01",
+    status: "正常",
+    freezeReason: ""
+  }
+];
+
 const baseRows = {
   users: [
     ["chtes", "今天", "20", "3", "1,000.00", "138 1234 1234", "正常"],
