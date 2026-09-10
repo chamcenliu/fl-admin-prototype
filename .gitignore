@@ -1,2 +1,4 @@
 dist/
 .tool-cache/
+node_modules/
+.vite/

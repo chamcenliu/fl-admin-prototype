@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #f4f6f8;
+  color: #17202a;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+@layer components {
+  .panel {
+    @apply border border-line bg-white shadow-panel;
+    border-radius: 8px;
+  }
+
+  .icon-button {
+    @apply inline-grid h-9 w-9 place-items-center border border-line bg-white text-muted transition hover:bg-slate-50 hover:text-ink;
+    border-radius: 8px;
+  }
+
+  .primary-button {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 border border-brand-dark bg-brand-dark px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#485907];
+    border-radius: 8px;
+  }
+
+  .secondary-button {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 border border-line bg-white px-4 text-sm font-bold text-ink transition hover:bg-slate-50;
+    border-radius: 8px;
+  }
+}
