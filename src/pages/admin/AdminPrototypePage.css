@@ -29,6 +29,21 @@
   box-shadow: 0 10px 30px rgba(23, 32, 42, 0.06);
 }
 
+.prototype-fullscreen-main .fl-admin-prototype {
+  min-height: 100vh;
+}
+
+.prototype-fullscreen-main .fl-admin-frame {
+  min-height: 100vh;
+  border: 0;
+  box-shadow: none;
+}
+
+.prototype-fullscreen-main .fl-admin-sidebar,
+.prototype-fullscreen-main .fl-admin-workspace {
+  min-height: 100vh;
+}
+
 .fl-admin-sidebar {
   display: flex;
   min-height: 760px;
