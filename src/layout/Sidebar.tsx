@@ -1,5 +1,7 @@
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUp, FolderPlus, Pencil, Search, Trash2, X } from "lucide-react";
+import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { PageNode } from "../types/page";
 import { cn } from "../utils/classNames";
 import { Button } from "../components/ui/Button";
@@ -55,10 +57,10 @@ function FolderNameDialog({
     setTitle(initialValue || "");
   }, [initialValue]);
 
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/25 px-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-ink/25 px-4">
       <form
-        className="w-full max-w-sm border border-line bg-white p-5 shadow-2xl"
+        className="relative z-[101] w-full max-w-sm border border-line bg-white p-5 shadow-2xl"
         style={{ borderRadius: 8 }}
         onSubmit={event => {
           event.preventDefault();
@@ -73,7 +75,7 @@ function FolderNameDialog({
             <h2 className="text-lg font-bold">{mode === "create" ? "新建文件夹" : "重命名文件夹"}</h2>
             <p className="mt-1 text-sm leading-6 text-muted">输入清晰的页面分组名称，方便 PM、研发和 QA 快速定位。</p>
           </div>
-          <IconButton label="关闭" icon={<X className="h-4 w-4" />} onClick={onClose} />
+          <IconButton type="button" label="关闭" icon={<X className="h-4 w-4" />} onClick={onClose} />
         </div>
 
         <label className="grid gap-2 text-sm font-bold">
@@ -94,7 +96,8 @@ function FolderNameDialog({
           <Button type="submit" variant="primary" disabled={!title.trim()}>{mode === "create" ? "新建" : "保存"}</Button>
         </footer>
       </form>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -107,15 +110,15 @@ function DeleteFolderDialog({
   onConfirm: () => void;
   onClose: () => void;
 }) {
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/25 px-4">
-      <section className="w-full max-w-sm border border-line bg-white p-5 shadow-2xl" style={{ borderRadius: 8 }} role="dialog" aria-modal="true" aria-labelledby="delete-folder-title">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-ink/25 px-4">
+      <section className="relative z-[101] w-full max-w-sm border border-line bg-white p-5 shadow-2xl" style={{ borderRadius: 8 }} role="dialog" aria-modal="true" aria-labelledby="delete-folder-title">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 id="delete-folder-title" className="text-lg font-bold">删除操作</h2>
             <p className="mt-1 text-sm leading-6 text-muted">确认删除“{folderTitle}”文件夹？删除后该文件夹下的页面也会从当前原型树中移除。</p>
           </div>
-          <IconButton label="关闭" icon={<X className="h-4 w-4" />} onClick={onClose} />
+          <IconButton type="button" label="关闭" icon={<X className="h-4 w-4" />} onClick={onClose} />
         </div>
         <footer className="flex justify-end gap-2">
           <Button type="button" onClick={onClose}>取消</Button>
@@ -132,7 +135,8 @@ function DeleteFolderDialog({
           </button>
         </footer>
       </section>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -157,6 +161,11 @@ function SidebarNode({
   const Icon = node.icon;
   const isFolder = node.type === "folder";
   const isFolderCollapsed = collapsedFolderIds.has(node.id) && !searchActive;
+  const stopFolderAction = (event: MouseEvent<HTMLButtonElement>) => {
+    // 文件夹整行支持拖拽排序，操作按钮需要隔离点击事件，避免被拖拽容器吞掉。
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   return (
     <div>
@@ -192,13 +201,25 @@ function SidebarNode({
                 label={`重命名${node.title}`}
                 icon={<Pencil className="h-3.5 w-3.5" />}
                 className="h-7 w-7"
-                onClick={() => onRenameFolder(node.id, node.title)}
+                draggable={false}
+                onMouseDown={event => event.stopPropagation()}
+                onDragStart={event => event.stopPropagation()}
+                onClick={event => {
+                  stopFolderAction(event);
+                  onRenameFolder(node.id, node.title);
+                }}
               />
               <IconButton
                 label={`删除${node.title}`}
                 icon={<Trash2 className="h-3.5 w-3.5" />}
                 className="h-7 w-7 text-red-600 hover:text-red-700"
-                onClick={() => onRequestDeleteFolder(node.id, node.title)}
+                draggable={false}
+                onMouseDown={event => event.stopPropagation()}
+                onDragStart={event => event.stopPropagation()}
+                onClick={event => {
+                  stopFolderAction(event);
+                  onRequestDeleteFolder(node.id, node.title);
+                }}
               />
             </span>
           ) : null}
@@ -269,7 +290,7 @@ export function Sidebar(props: SidebarProps) {
       </div>
 
       <div className="flex items-center justify-between gap-2 px-3 py-3">
-        {!props.collapsed ? <Button icon={<FolderPlus className="h-4 w-4" />} onClick={() => setDialog({ mode: "create" })}>文件夹</Button> : null}
+        {!props.collapsed ? <Button type="button" icon={<FolderPlus className="h-4 w-4" />} onClick={() => setDialog({ mode: "create" })}>文件夹</Button> : null}
         <div className="flex items-center gap-2">
           {!props.collapsed ? (
             <IconButton

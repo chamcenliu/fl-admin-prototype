@@ -901,14 +901,6 @@ export function AdminPrototypePage({ initialPageId = "admin-users", onNavigate, 
 
   return (
     <div className="fl-admin-prototype">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand-dark">Freelog Admin Prototype</p>
-          <h2 className="text-2xl font-bold">产品管理后台交互原型</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-7 text-muted">后台原型已作为 Prototype-as-PRD 框架中的业务交付页面维护，框架负责页面树、PRD 标注、迭代版本、分享和全屏预览。</p>
-        </div>
-      </div>
-
       <PrdWrapper noteId="prd-fl-admin-embedded-shell" onOpen={onOpenPrd}>
         <div className="fl-admin-frame">
           <aside className="fl-admin-sidebar">

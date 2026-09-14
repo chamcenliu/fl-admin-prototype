@@ -6,9 +6,10 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   icon?: ReactNode;
 };
 
-export function Button({ variant = "secondary", icon, className, children, ...props }: ButtonProps) {
+export function Button({ variant = "secondary", icon, className, children, type = "button", ...props }: ButtonProps) {
   return (
     <button
+      type={type}
       className={cn(
         variant === "primary" && "primary-button",
         variant === "secondary" && "secondary-button",

@@ -7,9 +7,10 @@ type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "default" | "frameless";
 };
 
-export function IconButton({ label, icon, variant = "default", className, ...props }: IconButtonProps) {
+export function IconButton({ label, icon, variant = "default", className, type = "button", ...props }: IconButtonProps) {
   return (
     <button
+      type={type}
       aria-label={label}
       title={label}
       className={cn(
