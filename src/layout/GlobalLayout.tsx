@@ -1,42 +1,140 @@
-import { Bell, Search } from "lucide-react";
+import { ArrowLeft, Code2, Copy, Layers3, Maximize2, Minimize2 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { PageNode } from "../types/page";
 import { Sidebar } from "./Sidebar";
-import { IconButton } from "../components/ui/IconButton";
 import { cn } from "../utils/classNames";
+import { IconButton } from "../components/ui/IconButton";
 
 type GlobalLayoutProps = {
   tree: PageNode[];
   activeTitle?: string;
+  activePath: PageNode[];
   activePageId: string;
   collapsed: boolean;
+  prototypeFullscreen: boolean;
+  shareStatus?: string;
   children: ReactNode;
   onToggleSidebar: () => void;
-  onCreateFolder: () => void;
+  onTogglePrototypeFullscreen: () => void;
+  onCreateFolder: (title: string) => void;
+  onRenameFolder: (folderId: string, title: string) => void;
+  onDeleteFolder: (folderId: string) => void;
+  onBack: () => void;
+  onShareCurrentPage: () => void;
+  onCreateIteration: () => void;
   onSelectPage: (pageId: string) => void;
   onReorder: (draggedId: string, targetId: string) => void;
 };
 
-export function GlobalLayout({ children, collapsed, activeTitle, onToggleSidebar, ...props }: GlobalLayoutProps) {
+function firstPageId(node: PageNode): string | undefined {
+  if (node.type === "page") return node.id;
+  for (const child of node.children || []) {
+    const pageId = firstPageId(child);
+    if (pageId) return pageId;
+  }
+  return undefined;
+}
+
+function PrototypeActions({
+  prototypeFullscreen,
+  shareStatus,
+  onShareCurrentPage,
+  onCreateIteration,
+  onTogglePrototypeFullscreen
+}: Pick<GlobalLayoutProps, "prototypeFullscreen" | "shareStatus" | "onShareCurrentPage" | "onCreateIteration" | "onTogglePrototypeFullscreen">) {
   return (
-    <div className={cn("grid min-h-screen", collapsed ? "grid-cols-[72px_minmax(0,1fr)]" : "grid-cols-[272px_minmax(0,1fr)]")}>
-      <Sidebar collapsed={collapsed} onToggle={onToggleSidebar} {...props} />
-      <section className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line bg-white/90 px-6 backdrop-blur">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-brand-dark">Prototype-as-PRD</p>
-            <h1 className="text-lg font-bold">{activeTitle || "首页导航"}</h1>
+    <div className="flex items-center gap-2">
+      <div className="relative">
+        <IconButton variant="frameless" label="分享当前原型页地址" icon={<Copy className="h-4 w-4" />} onClick={onShareCurrentPage} />
+        {shareStatus ? (
+          <span className="absolute right-0 top-11 whitespace-nowrap border border-line bg-white px-2 py-1 text-xs font-bold text-brand-dark shadow-panel" style={{ borderRadius: 8 }}>
+            {shareStatus}
+          </span>
+        ) : null}
+      </div>
+      {!prototypeFullscreen ? (
+        <IconButton variant="frameless" label="迭代列表" icon={<Layers3 className="h-4 w-4" />} onClick={onCreateIteration} />
+      ) : null}
+      <IconButton
+        variant="frameless"
+        label={prototypeFullscreen ? "显示导航" : "全屏显示原型"}
+        icon={prototypeFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        onClick={onTogglePrototypeFullscreen}
+        className="text-brand-dark hover:bg-brand-soft hover:text-brand-dark"
+      />
+    </div>
+  );
+}
+
+export function GlobalLayout({ children, collapsed, activeTitle, activePath, prototypeFullscreen, shareStatus, onToggleSidebar, onBack, onShareCurrentPage, onCreateIteration, onTogglePrototypeFullscreen, onSelectPage, ...props }: GlobalLayoutProps) {
+  const currentPage = activePath[activePath.length - 1];
+
+  if (prototypeFullscreen) {
+    return (
+      <div className="min-h-screen bg-canvas">
+        <div className="fixed right-4 top-4 z-40">
+          <PrototypeActions
+            prototypeFullscreen={prototypeFullscreen}
+            shareStatus={shareStatus}
+            onShareCurrentPage={onShareCurrentPage}
+            onCreateIteration={onCreateIteration}
+            onTogglePrototypeFullscreen={onTogglePrototypeFullscreen}
+          />
+        </div>
+        <main className="mx-auto w-full max-w-7xl px-6 py-20">{children}</main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-canvas">
+      <header className="sticky top-0 z-40 grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-b border-line bg-white/90 px-4 py-3 backdrop-blur lg:px-6">
+        <IconButton label="后退" icon={<ArrowLeft className="h-4 w-4" />} onClick={onBack} />
+
+        <div className="flex min-w-0 items-center gap-3">
+          <nav className="flex min-w-0 flex-none items-center gap-1 text-sm" aria-label="原型页面面包屑">
+            {activePath.length ? activePath.map((node, index) => {
+              const targetPageId = firstPageId(node);
+              const isLast = index === activePath.length - 1;
+              return (
+                <span key={node.id} className="flex min-w-0 items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={!targetPageId}
+                    onClick={() => targetPageId && onSelectPage(targetPageId)}
+                    className={cn(
+                      "max-w-40 truncate px-1 py-0.5 font-bold transition hover:text-brand-dark disabled:cursor-default disabled:text-muted",
+                      isLast ? "text-ink" : "text-muted"
+                    )}
+                  >
+                    {node.title}
+                  </button>
+                  {!isLast ? <span className="text-muted">/</span> : null}
+                </span>
+              );
+            }) : <strong>{activeTitle || "首页导航"}</strong>}
+          </nav>
+          <div className="flex min-w-0 items-center gap-2 text-xs text-muted">
+            <Code2 className="h-3.5 w-3.5 flex-none" />
+            <code className="truncate rounded bg-slate-100 px-2 py-0.5">{currentPage?.sourceFile || "未绑定源码文件"}</code>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="hidden h-9 min-w-64 items-center gap-2 border border-line bg-white px-3 text-sm text-muted md:flex" style={{ borderRadius: 8 }}>
-              <Search className="h-4 w-4" />
-              <input className="w-full border-0 bg-transparent outline-none" placeholder="搜索页面、版本或需求" />
-            </label>
-            <IconButton label="通知" icon={<Bell className="h-4 w-4" />} />
-          </div>
-        </header>
-        <main className="mx-auto w-full max-w-7xl px-6 py-6">{children}</main>
-      </section>
+        </div>
+
+        <PrototypeActions
+          prototypeFullscreen={prototypeFullscreen}
+          shareStatus={shareStatus}
+          onShareCurrentPage={onShareCurrentPage}
+          onCreateIteration={onCreateIteration}
+          onTogglePrototypeFullscreen={onTogglePrototypeFullscreen}
+        />
+      </header>
+
+      <div className={cn("grid", collapsed ? "grid-cols-[72px_minmax(0,1fr)]" : "grid-cols-[272px_minmax(0,1fr)]")}>
+        <Sidebar collapsed={collapsed} onToggle={onToggleSidebar} onSelectPage={onSelectPage} {...props} />
+        <section className="min-w-0">
+          <main className="mx-auto w-full max-w-7xl px-6 py-6">{children}</main>
+        </section>
+      </div>
     </div>
   );
 }

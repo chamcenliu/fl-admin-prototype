@@ -2,10 +2,21 @@ import type { IterationVersion } from "../types/version";
 
 export const iterationVersions: IterationVersion[] = [
   {
+    id: "it-20260914-prd-shell",
+    version: "v1.1.0",
+    title: "Freelog 后台嵌入 Prototype-as-PRD",
+    status: "active",
+    owner: "产品架构组",
+    lastUpdated: "2026-09-14T10:40:00+08:00",
+    pageIds: ["admin-dashboard", "admin-users", "admin-resources", "admin-nodes", "admin-transactions", "admin-campaigns"],
+    requirementIds: ["prd-fl-admin-embedded-shell", "prd-fl-admin-dashboard", "prd-fl-admin-user-filter", "prd-fl-admin-user-search", "prd-fl-admin-user-table"],
+    summary: "将 Freelog 管理后台交互原型接入 Prototype-as-PRD 交付框架，并保留用户管理核心交互与 PRD 标注。"
+  },
+  {
     id: "it-20260910-beta",
     version: "v1.0.0-Beta",
     title: "原型脚手架首轮",
-    status: "active",
+    status: "archived",
     owner: "产品架构组",
     lastUpdated: "2026-09-10T15:40:00+08:00",
     pageIds: ["dashboard", "versions", "order-approval"],

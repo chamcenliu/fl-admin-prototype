@@ -7,6 +7,7 @@ export type PageNode = {
   title: string;
   type: PageNodeType;
   status?: "draft" | "review" | "ready";
+  sourceFile?: string;
   icon?: LucideIcon;
   children?: PageNode[];
 };

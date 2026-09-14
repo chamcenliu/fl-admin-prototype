@@ -4,11 +4,22 @@ import { cn } from "../../utils/classNames";
 type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
   icon: ReactNode;
+  variant?: "default" | "frameless";
 };
 
-export function IconButton({ label, icon, className, ...props }: IconButtonProps) {
+export function IconButton({ label, icon, variant = "default", className, ...props }: IconButtonProps) {
   return (
-    <button aria-label={label} title={label} className={cn("icon-button", className)} {...props}>
+    <button
+      aria-label={label}
+      title={label}
+      className={cn(
+        variant === "default" && "icon-button",
+        variant === "frameless" && "inline-grid h-9 w-9 place-items-center text-muted transition hover:bg-slate-100 hover:text-ink",
+        className
+      )}
+      style={variant === "frameless" ? { borderRadius: 0 } : undefined}
+      {...props}
+    >
       {icon}
     </button>
   );
