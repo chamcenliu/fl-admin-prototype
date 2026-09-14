@@ -16,6 +16,21 @@ export type AdminUser = {
   freezeReason?: string;
 };
 
+export type AdminAuthTemplate = {
+  id: string;
+  code: string;
+  name: string;
+  scope: string;
+  applyTo: ("资源" | "展品")[];
+  resourceTypes: string[];
+  status: "已启用" | "已停用";
+  recommended: boolean;
+  policyCode: string;
+  policyTranslation: string;
+  dynamicTranslation: string;
+  updatedAt: string;
+};
+
 export type AdminPageMeta = {
   id: string;
   label: string;
@@ -69,7 +84,8 @@ export const adminNavGroups = [
       { id: "admin-categories", label: "运营分类管理" },
       { id: "admin-topics", label: "专题管理" },
       { id: "admin-campaigns", label: "活动管理" },
-      { id: "admin-ads", label: "站内广告管理" }
+      { id: "admin-ads", label: "站内广告管理" },
+      { id: "admin-auth-templates", label: "授权策略模板管理" }
     ]
   },
   {
@@ -163,6 +179,95 @@ export const adminRecentTasks = [
   ["内测资格审核", "用户 chlll", "平台运营", "21 分钟前", "待处理"],
   ["评论风险提示", "freeBuzz #29481", "系统检测", "43 分钟前", "需关注"],
   ["支付路由异常", "微信支付 · CN-CNY-02", "支付服务", "1 小时前", "已定位"]
+];
+
+export const adminResourceTypeOptions = ["未来新增类型", "图片", "摄影", "音乐", "播客节目", "音频", "插画"];
+
+export const adminAuthTemplates: AdminAuthTemplate[] = [
+  {
+    id: "auth-tpl-001",
+    code: "AT-0001",
+    name: "永久免费",
+    scope: "资源(10/20) · 展品(3/20)",
+    applyTo: ["资源", "展品"],
+    resourceTypes: ["图片", "摄影", "插画"],
+    status: "已启用",
+    recommended: true,
+    policyCode: "for public\ninitial:\n  auth",
+    policyTranslation: "永久免费，用户可直接获得授权。",
+    dynamicTranslation: "授权后长期有效。",
+    updatedAt: "2026-09-09 10:30"
+  },
+  {
+    id: "auth-tpl-002",
+    code: "AT-0002",
+    name: "免费试用后订阅",
+    scope: "展品(15/20)",
+    applyTo: ["展品"],
+    resourceTypes: ["音乐", "音频", "播客节目"],
+    status: "已启用",
+    recommended: false,
+    policyCode: "for public\ninitial:\n  ~freelog.TimeEvent(\"7d\") => trial\ntrial:\n  ~freelog.TransactionEvent(\"0.09\", \"self.account\") => auth",
+    policyTranslation: "免费试用后，订阅即可继续使用。",
+    dynamicTranslation: "试用期结束后按订阅价格扣费。",
+    updatedAt: "2026-09-08 16:42"
+  },
+  {
+    id: "auth-tpl-003",
+    code: "AT-0003",
+    name: "付费订阅",
+    scope: "资源(8/20) · 展品(6/20)",
+    applyTo: ["资源", "展品"],
+    resourceTypes: ["图片", "音乐", "音频"],
+    status: "已启用",
+    recommended: false,
+    policyCode: "for public\ninitial:\n  ~freelog.TransactionEvent(\"0.09\", \"self.account\") => auth",
+    policyTranslation: "支付订阅费用后获得授权。",
+    dynamicTranslation: "本次订阅费用为 ${initial.TransactionEvent[0].amount} 羽币。",
+    updatedAt: "2026-09-07 09:15"
+  },
+  {
+    id: "auth-tpl-004",
+    code: "AT-0004",
+    name: "永久解锁",
+    scope: "资源(10/20) · 展品(3/20)",
+    applyTo: ["资源", "展品"],
+    resourceTypes: ["图片", "插画"],
+    status: "已停用",
+    recommended: false,
+    policyCode: "for public\ninitial:\n  ~freelog.TransactionEvent(\"1.99\", \"self.account\") => auth",
+    policyTranslation: "付费后永久解锁。",
+    dynamicTranslation: "永久解锁价格为 ${initial.TransactionEvent[0].amount} 羽币。",
+    updatedAt: "2026-09-06 13:08"
+  },
+  {
+    id: "auth-tpl-005",
+    code: "AT-0005",
+    name: "限时特价",
+    scope: "资源(4/20) · 展品(4/20)",
+    applyTo: ["资源", "展品"],
+    resourceTypes: ["音乐", "音频"],
+    status: "已启用",
+    recommended: true,
+    policyCode: "for public\ninitial:\n  ~freelog.TransactionEvent(\"0.09\", \"self.account\") => auth\n  ~freelog.TimeEvent(\"2023-07-31 00:00\") => finish\nauth[active]:\n  terminate\nfinish:",
+    policyTranslation: "限时半价，仅需支付对应羽币，即可永久解锁。",
+    dynamicTranslation: "优惠截止至：${initial.TimeEvent.dateTime}",
+    updatedAt: "2026-09-05 11:20"
+  },
+  {
+    id: "auth-tpl-006",
+    code: "AT-0006",
+    name: "限时免费",
+    scope: "资源(6/20)",
+    applyTo: ["资源"],
+    resourceTypes: ["未来新增类型", "图片", "摄影"],
+    status: "已停用",
+    recommended: false,
+    policyCode: "for public\ninitial:\n  ~freelog.TimeEvent(\"2026-10-01 00:00\") => finish\nfinish:\n  terminate",
+    policyTranslation: "限时免费开放，时间结束后自动失效。",
+    dynamicTranslation: "免费截止至：${initial.TimeEvent.dateTime}",
+    updatedAt: "2026-09-04 18:22"
+  }
 ];
 
 export const adminGenericRows: Record<string, string[][]> = {

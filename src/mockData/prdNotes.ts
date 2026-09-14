@@ -53,6 +53,36 @@ export const prdNotes: PrdNote[] = [
     linkedIterationId: "it-20260914-prd-shell"
   },
   {
+    id: "prd-fl-admin-auth-template-filter",
+    title: "授权策略模板按 Axure 原稿保留适用范围与状态筛选",
+    owner: "PM",
+    priority: "P0",
+    status: "可验收",
+    description: "授权策略模板管理页需要支持按资源类型和启停状态筛选模板，以匹配 Axure 原稿中的“适用范围”“状态”筛选区。",
+    acceptance: ["适用范围筛选支持图片、插画、音乐、音频等资源类型", "筛选条件以标签形式展示并可单独移除", "状态筛选支持全部、已启用、已停用"],
+    linkedIterationId: "it-20260914-prd-shell"
+  },
+  {
+    id: "prd-fl-admin-auth-template-search",
+    title: "授权策略模板支持搜索与重置",
+    owner: "PM",
+    priority: "P0",
+    status: "可验收",
+    description: "运营人员需要按编号、模板名称或策略翻译快速定位授权策略模板，并能恢复默认列表状态。",
+    acceptance: ["搜索框支持回车和按钮提交", "搜索匹配编号、模板名称、策略翻译和动态记录翻译", "重置按钮清空搜索、状态和适用范围筛选"],
+    linkedIterationId: "it-20260914-prd-shell"
+  },
+  {
+    id: "prd-fl-admin-auth-template-table",
+    title: "授权策略模板表格还原 Axure 核心字段与动作",
+    owner: "PM",
+    priority: "P0",
+    status: "可验收",
+    description: "表格需要保留 Axure 中的编号、授权策略模板、适用范围、状态和操作列，并支持启停、推荐、预览、编辑、删除及批量修改适用范围。",
+    acceptance: ["表格展示编号、模板名称、适用范围、启停状态和操作", "行级操作支持启用/停用、推荐/取消推荐、预览、编辑和删除", "批量选择后出现“已选中 N 条”和“修改适用范围”操作"],
+    linkedIterationId: "it-20260914-prd-shell"
+  },
+  {
     id: "prd-order-filter",
     title: "审批列表需要支持多条件筛选",
     owner: "PM",

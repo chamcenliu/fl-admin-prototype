@@ -51,6 +51,7 @@ export const pageTree: PageNode[] = [
         icon: Megaphone,
         children: [
           { id: "admin-campaigns", title: "活动管理", type: "page", status: "review", icon: Megaphone, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },
+          { id: "admin-auth-templates", title: "授权策略模板管理", type: "page", status: "review", icon: Megaphone, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },
           { id: "admin-version-review", title: "资源版本审核", type: "page", status: "draft", icon: ShieldAlert, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },
           { id: "admin-translations", title: "翻译管理", type: "page", status: "draft", icon: Languages, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" }
         ]
