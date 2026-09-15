@@ -110,7 +110,7 @@ export function GlobalLayout({ children, collapsed, activeTitle, activePath, pro
           onShareCurrentPage={onShareCurrentPage}
           onTogglePrototypeFullscreen={onTogglePrototypeFullscreen}
         />
-        <main className="mx-auto w-full max-w-7xl px-6 py-20">{children}</main>
+        <main className="min-h-screen w-full">{children}</main>
       </div>
     );
   }
