@@ -109,8 +109,13 @@
   border: 1px solid #dce2e6;
   border-radius: 7px;
   background: #fff;
-  font-size: 12px;
-  font-weight: 800;
+  color: #7a8794;
+}
+
+.fl-admin-nav-title:hover .fl-admin-nav-icon,
+.fl-admin-nav-title:focus-visible .fl-admin-nav-icon {
+  border-color: #cdd8df;
+  color: var(--admin-brand-dark);
 }
 
 .fl-admin-nav-pages {

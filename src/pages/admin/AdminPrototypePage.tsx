@@ -1,5 +1,17 @@
 import { useMemo, useState } from "react";
 import {
+  Database,
+  FileText,
+  Languages,
+  LayoutDashboard,
+  Megaphone,
+  Network,
+  ReceiptText,
+  ShieldCheck,
+  Users,
+  type LucideIcon
+} from "lucide-react";
+import {
   adminAuthTemplates,
   adminDashboardStats,
   adminGenericColumns,
@@ -34,6 +46,18 @@ type AuthTemplateDialog =
 
 const tagOptions = ["小说", "测试", "节点商", "资源作者", "消费者"];
 const freezeReasons = ["抄袭、侵权", "垃圾广告", "色情、暴力", "不实信息", "欺诈", "恶意操作"];
+
+const adminNavIconMap: Record<string, LucideIcon> = {
+  概览: LayoutDashboard,
+  用户: Users,
+  资源: Database,
+  节点: Network,
+  合约: FileText,
+  交易: ReceiptText,
+  运营: Megaphone,
+  安全与合规: ShieldCheck,
+  国际化: Languages
+};
 
 function statusClass(status: string) {
   if (/正常|上线|完成|进行中|启用|发布|已定位/.test(status)) return "success";
@@ -908,7 +932,16 @@ export function AdminPrototypePage({ initialPageId = "admin-users", onNavigate, 
             <nav aria-label="Freelog 后台导航">
               {adminNavGroups.map(group => (
                 <section className="fl-admin-nav-group" key={group.label}>
-                  <button className="fl-admin-nav-title" type="button"><span className="fl-admin-nav-icon">{group.icon}</span><span>{group.label}</span><span>⌄</span></button>
+                  <button className="fl-admin-nav-title" type="button" aria-label={group.label}>
+                    <span className="fl-admin-nav-icon" aria-hidden="true">
+                      {(() => {
+                        const NavIcon = adminNavIconMap[group.label] || LayoutDashboard;
+                        return <NavIcon size={15} strokeWidth={1.9} />;
+                      })()}
+                    </span>
+                    <span>{group.label}</span>
+                    <span>⌄</span>
+                  </button>
                   <div className="fl-admin-nav-pages">
                     {group.pages.map(page => <button key={page.id} className={`fl-admin-nav-link ${page.id === activePageId ? "active" : ""}`} type="button" onClick={() => navigate(page.id)}>{page.label}</button>)}
                   </div>
