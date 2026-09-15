@@ -686,6 +686,70 @@
   gap: 8px;
 }
 
+.fl-admin-edit-page {
+  overflow: visible;
+  padding: 0;
+}
+
+.fl-admin-edit-form-header,
+.fl-admin-edit-form-section,
+.fl-admin-edit-page-footer {
+  padding: 20px 24px;
+}
+
+.fl-admin-edit-form-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.fl-admin-edit-form-header div,
+.fl-admin-edit-form-section > div {
+  display: grid;
+  gap: 5px;
+}
+
+.fl-admin-edit-form-header strong,
+.fl-admin-edit-form-section strong {
+  color: var(--admin-ink);
+  font-size: 16px;
+}
+
+.fl-admin-edit-form-header span:not(.fl-admin-status),
+.fl-admin-edit-form-section span {
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.fl-admin-auth-form-page {
+  grid-template-columns: minmax(220px, 0.72fr) minmax(260px, 1fr);
+  gap: 16px 20px;
+  padding: 6px 24px 22px;
+}
+
+.fl-admin-auth-form-page .fl-admin-dialog-field.wide {
+  grid-column: 1 / -1;
+}
+
+.fl-admin-auth-form-page textarea {
+  resize: vertical;
+}
+
+.fl-admin-edit-form-section {
+  border-top: 1px solid var(--admin-line);
+}
+
+.fl-admin-edit-page-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--admin-line);
+  background: #fbfcfd;
+}
+
 .fl-admin-code-preview {
   display: grid;
   gap: 8px;

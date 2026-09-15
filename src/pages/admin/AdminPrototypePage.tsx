@@ -38,7 +38,6 @@ type AdminDialog =
 
 type AuthTemplateDialog =
   | { type: "create" }
-  | { type: "edit"; templateId: string }
   | { type: "preview"; templateId: string }
   | { type: "scope"; templateIds: string[] }
   | { type: "delete"; templateId: string }
@@ -211,6 +210,7 @@ function AuthTemplateName({ template }: { template: AdminAuthTemplate }) {
 function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => void }) {
   const [templates, setTemplates] = useState<AdminAuthTemplate[]>(() => adminAuthTemplates.map(item => ({ ...item, applyTo: [...item.applyTo], resourceTypes: [...item.resourceTypes] })));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [queryDraft, setQueryDraft] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("全部状态");
@@ -263,6 +263,21 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
     setTemplates(current => current.map(template => templateIds.includes(template.id) ? { ...template, resourceTypes, applyTo, scope: `${applyTo.includes("资源") ? `资源(${Math.max(1, resourceTypes.length * 2)}/20)` : ""}${applyTo.length === 2 ? " · " : ""}${applyTo.includes("展品") ? `展品(${Math.max(1, resourceTypes.length)}/20)` : ""}` } : template));
     setSelectedIds(new Set());
     setDialog(null);
+  }
+
+  const editingTemplate = editingTemplateId ? templates.find(template => template.id === editingTemplateId) : undefined;
+
+  if (editingTemplate) {
+    return (
+      <AuthTemplateEditPage
+        template={editingTemplate}
+        onCancel={() => setEditingTemplateId(null)}
+        onSave={template => {
+          saveTemplate(template);
+          setEditingTemplateId(null);
+        }}
+      />
+    );
   }
 
   return (
@@ -358,7 +373,7 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
                       <button className="fl-admin-action-button" type="button" onClick={() => updateTemplate(template.id, item => ({ ...item, status: item.status === "已启用" ? "已停用" : "已启用" }))}>{template.status === "已启用" ? "停用" : "启用"}</button>
                       <button className="fl-admin-action-button" type="button" onClick={() => updateTemplate(template.id, item => ({ ...item, recommended: !item.recommended }))}>{template.recommended ? "取消推荐" : "推荐"}</button>
                       <button className="fl-admin-action-button" type="button" onClick={() => setDialog({ type: "preview", templateId: template.id })}>预览</button>
-                      <button className="fl-admin-action-button" type="button" onClick={() => setDialog({ type: "edit", templateId: template.id })}>编辑</button>
+                      <button className="fl-admin-action-button" type="button" onClick={() => setEditingTemplateId(template.id)}>编辑</button>
                       <button className="fl-admin-action-button danger" type="button" onClick={() => setDialog({ type: "delete", templateId: template.id })}>删除</button>
                     </td>
                   </tr>
@@ -391,6 +406,95 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
           onApplyScope={applyScope}
         />
       ) : null}
+    </>
+  );
+}
+
+function AuthTemplateEditPage({ template, onCancel, onSave }: { template: AdminAuthTemplate; onCancel: () => void; onSave: (template: AdminAuthTemplate) => void }) {
+  const [name, setName] = useState(template.name);
+  const [status, setStatus] = useState<"已启用" | "已停用">(template.status);
+  const [applyTo, setApplyTo] = useState<Set<string>>(() => new Set(template.applyTo));
+  const [resourceTypes, setResourceTypes] = useState<Set<string>>(() => new Set(template.resourceTypes));
+  const [policyCode, setPolicyCode] = useState(template.policyCode);
+  const [policyTranslation, setPolicyTranslation] = useState(template.policyTranslation);
+  const [dynamicTranslation, setDynamicTranslation] = useState(template.dynamicTranslation);
+
+  function handleSave() {
+    const nextApplyTo = ([...applyTo].filter(Boolean) as ("资源" | "展品")[]);
+    const nextTypes = [...resourceTypes];
+    onSave({
+      ...template,
+      name: name || "未命名模板",
+      status,
+      applyTo: nextApplyTo.length ? nextApplyTo : ["资源"],
+      resourceTypes: nextTypes.length ? nextTypes : ["图片"],
+      scope: `${nextApplyTo.includes("资源") ? `资源(${Math.max(1, nextTypes.length * 2)}/20)` : ""}${nextApplyTo.length === 2 ? " · " : ""}${nextApplyTo.includes("展品") ? `展品(${Math.max(1, nextTypes.length)}/20)` : ""}`,
+      policyCode,
+      policyTranslation,
+      dynamicTranslation,
+      updatedAt: "2026-09-15 12:00"
+    });
+  }
+
+  return (
+    <>
+      <div className="fl-admin-page-heading">
+        <div>
+          <span className="fl-admin-eyebrow">授权策略模板管理 ＞ 编辑模板</span>
+          <h2>编辑授权策略模板</h2>
+          <p>正在编辑 {template.code} · {template.name}。长表单编辑使用独立页面承载，保存后返回模板列表。</p>
+        </div>
+        <button className="fl-admin-secondary-button" type="button" onClick={onCancel}>返回列表</button>
+      </div>
+
+      <section className="fl-admin-panel fl-admin-edit-page">
+        <div className="fl-admin-edit-form-header">
+          <div>
+            <strong>基础信息</strong>
+            <span>控制模板启停、展示名称、授权策略代码与翻译文案。</span>
+          </div>
+          <span className={`fl-admin-status ${statusClass(status)}`}>{status}</span>
+        </div>
+
+        <div className="fl-admin-auth-form fl-admin-auth-form-page">
+          <label className="fl-admin-dialog-field">是否启用
+            <select value={status} onChange={event => setStatus(event.target.value as "已启用" | "已停用")}>
+              <option value="已启用">启用</option>
+              <option value="已停用">停用</option>
+            </select>
+            <small>{status === "已启用" ? "在用户端策略模板库中显示，用户在创建授权策略时可使用此模板" : "在用户端策略模板库中隐藏"}</small>
+          </label>
+          <label className="fl-admin-dialog-field">名称<input value={name} onChange={event => setName(event.target.value)} placeholder="请输入授权策略模板名称" /></label>
+          <label className="fl-admin-dialog-field wide">策略代码<textarea value={policyCode} onChange={event => setPolicyCode(event.target.value)} rows={9} /></label>
+          <label className="fl-admin-dialog-field">策略翻译 (zh-CN)<textarea value={policyTranslation} onChange={event => setPolicyTranslation(event.target.value)} rows={4} /></label>
+          <label className="fl-admin-dialog-field">动态记录翻译 (zh-CN)【选填】<textarea value={dynamicTranslation} onChange={event => setDynamicTranslation(event.target.value)} rows={4} /></label>
+        </div>
+
+        <div className="fl-admin-edit-form-section">
+          <div>
+            <strong>适用范围</strong>
+            <span>选择该模板应用于资源或展品，并配置可使用的资源类型。</span>
+          </div>
+          <fieldset className="fl-admin-auth-fieldset">
+            <legend>应用于</legend>
+            {["资源", "展品"].map(item => <label key={item}><input type="checkbox" checked={applyTo.has(item)} onChange={() => setApplyTo(current => toggleSetValue(current, item))} /> {item}</label>)}
+          </fieldset>
+          <fieldset className="fl-admin-auth-fieldset resource-types">
+            <legend>适用资源类型</legend>
+            {adminResourceTypeOptions.map(type => <label key={type}><input type="checkbox" checked={resourceTypes.has(type)} onChange={() => setResourceTypes(current => toggleSetValue(current, type))} /> {type}</label>)}
+          </fieldset>
+          <div className="fl-admin-dialog-actions">
+            <button className="fl-admin-link-button" type="button" onClick={() => setResourceTypes(new Set(adminResourceTypeOptions))}>全选</button>
+            <span>|</span>
+            <button className="fl-admin-link-button" type="button" onClick={() => setResourceTypes(new Set())}>全不选</button>
+          </div>
+        </div>
+
+        <footer className="fl-admin-edit-page-footer">
+          <button className="fl-admin-secondary-button" type="button" onClick={onCancel}>取消</button>
+          <button className="fl-admin-button" type="button" onClick={handleSave}>保存</button>
+        </footer>
+      </section>
     </>
   );
 }
@@ -500,12 +604,12 @@ function AuthTemplateDialogView({
     );
   }
 
-  if (dialog.type === "create" || (dialog.type === "edit" && existing)) {
+  if (dialog.type === "create") {
     return (
       <div className="fl-admin-modal-backdrop">
         <section className="fl-admin-modal fl-admin-auth-form-modal" role="dialog" aria-modal="true">
-          <h3>{dialog.type === "create" ? "新建模板" : "编辑授权策略模板"}</h3>
-          <p>授权策略模板管理 ＞ {dialog.type === "create" ? "新建模板" : existing?.name}</p>
+          <h3>新建模板</h3>
+          <p>授权策略模板管理 ＞ 新建模板</p>
           <div className="fl-admin-auth-form">
             <label className="fl-admin-dialog-field">是否启用
               <select value={status} onChange={event => setStatus(event.target.value as "已启用" | "已停用")}>
