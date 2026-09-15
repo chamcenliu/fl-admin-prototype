@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUp, FolderPlus, Pencil, Search, Trash2, X } from "lucide-react";
+import type { DragEvent } from "react";
 import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -16,7 +17,7 @@ type SidebarProps = {
   onRenameFolder: (folderId: string, title: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onSelectPage: (pageId: string) => void;
-  onReorder: (draggedId: string, targetId: string) => void;
+  onReorder: (draggedId: string, targetId: string, placement: "before" | "after" | "inside") => void;
 };
 
 function StatusDot({ status }: { status?: PageNode["status"] }) {
@@ -161,22 +162,52 @@ function SidebarNode({
   const Icon = node.icon;
   const isFolder = node.type === "folder";
   const isFolderCollapsed = collapsedFolderIds.has(node.id) && !searchActive;
+  const [dropPlacement, setDropPlacement] = useState<"before" | "after" | "inside" | null>(null);
   const stopFolderAction = (event: MouseEvent<HTMLButtonElement>) => {
     // 文件夹整行支持拖拽排序，操作按钮需要隔离点击事件，避免被拖拽容器吞掉。
     event.preventDefault();
     event.stopPropagation();
   };
+  const readDropPlacement = (event: DragEvent<HTMLElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const y = event.clientY - rect.top;
+
+    if (isFolder) {
+      if (y < rect.height * 0.25) return "before";
+      if (y > rect.height * 0.75) return "after";
+      return "inside";
+    }
+
+    return y < rect.height / 2 ? "before" : "after";
+  };
+  const handleDragOver = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    const draggedId = event.dataTransfer.getData("text/page-id");
+    if (!draggedId || draggedId === node.id) return;
+    setDropPlacement(readDropPlacement(event));
+  };
+  const handleDrop = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    const draggedId = event.dataTransfer.getData("text/page-id");
+    const placement = dropPlacement || readDropPlacement(event);
+    setDropPlacement(null);
+    if (draggedId && draggedId !== node.id) onReorder(draggedId, node.id, placement);
+  };
 
   return (
-    <div>
+    <div className="relative">
+      {dropPlacement === "before" ? <span className="absolute -top-0.5 left-0 right-0 h-0.5 bg-brand" /> : null}
+      {dropPlacement === "after" ? <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-brand" /> : null}
       {isFolder ? (
         <div
           draggable
           onDragStart={event => event.dataTransfer.setData("text/page-id", node.id)}
-          onDragOver={event => event.preventDefault()}
-          onDrop={event => onReorder(event.dataTransfer.getData("text/page-id"), node.id)}
+          onDragOver={handleDragOver}
+          onDragLeave={() => setDropPlacement(null)}
+          onDrop={handleDrop}
           className={cn(
             "group mb-1 grid min-h-10 w-full cursor-grab grid-cols-[24px_1fr_auto] items-center gap-2 px-2 text-sm font-bold text-ink transition hover:bg-slate-50 active:cursor-grabbing",
+            dropPlacement === "inside" && "bg-brand-soft text-brand-dark outline outline-1 outline-brand",
             collapsed && "grid-cols-1 justify-items-center px-0"
           )}
           style={{ borderRadius: 8 }}
@@ -229,12 +260,14 @@ function SidebarNode({
           type="button"
           draggable
           onDragStart={event => event.dataTransfer.setData("text/page-id", node.id)}
-          onDragOver={event => event.preventDefault()}
-          onDrop={event => onReorder(event.dataTransfer.getData("text/page-id"), node.id)}
+          onDragOver={handleDragOver}
+          onDragLeave={() => setDropPlacement(null)}
+          onDrop={handleDrop}
           onClick={() => onSelectPage(node.id)}
           className={cn(
-            "mb-1 grid min-h-10 w-full grid-cols-[24px_1fr_auto] items-center gap-2 px-2 text-left text-sm text-muted transition hover:bg-slate-50 hover:text-ink",
+            "mb-1 grid min-h-10 w-full grid-cols-[24px_1fr_auto] items-center gap-2 px-2 text-left text-sm transition hover:bg-slate-50 hover:text-ink",
             activePageId === node.id && "bg-brand-soft font-bold text-brand-dark",
+            activePageId !== node.id && "text-muted",
             collapsed && "grid-cols-1 justify-items-center px-0"
           )}
           style={{ borderRadius: 8 }}

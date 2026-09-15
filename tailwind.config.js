@@ -9,9 +9,9 @@ export default {
         line: "#dfe5ea",
         canvas: "#f4f6f8",
         brand: {
-          DEFAULT: "#7c941a",
-          dark: "#566a0b",
-          soft: "#eef5d8"
+          DEFAULT: "#002FA7",
+          dark: "#001D6E",
+          soft: "#E8F0FF"
         }
       },
       boxShadow: {

@@ -42,7 +42,7 @@ button {
   }
 
   .primary-button {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 border border-brand-dark bg-brand-dark px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#485907];
+    @apply inline-flex min-h-10 items-center justify-center gap-2 border border-brand-dark bg-brand-dark px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#00164f];
     border-radius: 8px;
   }
 

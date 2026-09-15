@@ -42,24 +42,6 @@ function containsNode(node: PageNode, nodeId: string): boolean {
   return node.children?.some(child => containsNode(child, nodeId)) ?? false;
 }
 
-function reorderWithinSiblings(nodes: PageNode[], draggedId: string, targetId: string) {
-  const fromIndex = nodes.findIndex(item => item.id === draggedId);
-  const toIndex = nodes.findIndex(item => item.id === targetId);
-  if (fromIndex >= 0 && toIndex >= 0) {
-    const [moved] = nodes.splice(fromIndex, 1);
-    nodes.splice(toIndex, 0, moved);
-    return true;
-  }
-
-  for (const node of nodes) {
-    if (node.children && reorderWithinSiblings(node.children, draggedId, targetId)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 function deleteFolderInTree(tree: PageNode[], folderId: string): PageNode | undefined {
   const index = tree.findIndex(node => node.id === folderId && node.type === "folder");
   if (index >= 0) {
@@ -84,6 +66,49 @@ function renameFolderInTree(tree: PageNode[], folderId: string, title: string) {
     }
 
     if (node.children && renameFolderInTree(node.children, folderId, title)) return true;
+  }
+
+  return false;
+}
+
+function removeNodeInTree(tree: PageNode[], nodeId: string): PageNode | undefined {
+  const index = tree.findIndex(node => node.id === nodeId);
+  if (index >= 0) {
+    const [removed] = tree.splice(index, 1);
+    return removed;
+  }
+
+  for (const node of tree) {
+    if (!node.children) continue;
+    const removed = removeNodeInTree(node.children, nodeId);
+    if (removed) return removed;
+  }
+
+  return undefined;
+}
+
+function insertNearNode(tree: PageNode[], targetId: string, movedNode: PageNode, placement: "before" | "after") {
+  const index = tree.findIndex(node => node.id === targetId);
+  if (index >= 0) {
+    tree.splice(placement === "before" ? index : index + 1, 0, movedNode);
+    return true;
+  }
+
+  for (const node of tree) {
+    if (node.children && insertNearNode(node.children, targetId, movedNode, placement)) return true;
+  }
+
+  return false;
+}
+
+function insertIntoFolder(tree: PageNode[], folderId: string, movedNode: PageNode) {
+  for (const node of tree) {
+    if (node.id === folderId && node.type === "folder") {
+      node.children = [...(node.children || []), movedNode];
+      return true;
+    }
+
+    if (node.children && insertIntoFolder(node.children, folderId, movedNode)) return true;
   }
 
   return false;
@@ -135,11 +160,26 @@ export function usePageTree() {
     });
   }
 
-  function reorderNodes(draggedId: string, targetId: string) {
+  function reorderNodes(draggedId: string, targetId: string, placement: "before" | "after" | "inside" = "before") {
     if (draggedId === targetId) return;
+
     setTree(current => {
       const next = cloneTree(current);
-      reorderWithinSiblings(next, draggedId, targetId);
+      const draggedNode = findNode(next, draggedId);
+      const targetNode = findNode(next, targetId);
+
+      // 防止把父级文件夹拖进自己的子级，避免页面树形成循环结构。
+      if (!draggedNode || !targetNode || containsNode(draggedNode, targetId)) return current;
+
+      const movedNode = removeNodeInTree(next, draggedId);
+      if (!movedNode) return current;
+
+      if (placement === "inside" && targetNode.type === "folder" && movedNode.type === "page") {
+        insertIntoFolder(next, targetId, movedNode);
+      } else {
+        insertNearNode(next, targetId, movedNode, placement === "after" ? "after" : "before");
+      }
+
       return next;
     });
   }

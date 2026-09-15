@@ -23,7 +23,7 @@ type GlobalLayoutProps = {
   onShareCurrentPage: () => void;
   onCreateIteration: () => void;
   onSelectPage: (pageId: string) => void;
-  onReorder: (draggedId: string, targetId: string) => void;
+  onReorder: (draggedId: string, targetId: string, placement: "before" | "after" | "inside") => void;
 };
 
 function firstPageId(node: PageNode): string | undefined {
@@ -66,21 +66,50 @@ function PrototypeActions({
   );
 }
 
+function FullscreenActionDock({
+  shareStatus,
+  onShareCurrentPage,
+  onTogglePrototypeFullscreen
+}: Pick<GlobalLayoutProps, "shareStatus" | "onShareCurrentPage" | "onTogglePrototypeFullscreen">) {
+  return (
+    <div className="group fixed left-1/2 top-0 z-40 -translate-x-1/2">
+      <div className="mx-auto h-2 w-16 bg-brand shadow-panel transition-all group-hover:h-0" />
+      <div
+        className="flex -translate-y-14 items-center gap-2 border border-line bg-white/95 px-3 py-2 opacity-0 shadow-panel backdrop-blur transition-all duration-200 group-hover:translate-y-3 group-hover:opacity-100"
+        style={{ borderRadius: 8 }}
+        aria-label="全屏原型操作"
+      >
+        <div className="relative">
+          <IconButton variant="frameless" label="分享当前原型页地址" icon={<Copy className="h-4 w-4" />} onClick={onShareCurrentPage} />
+          {shareStatus ? (
+            <span className="absolute left-1/2 top-10 -translate-x-1/2 whitespace-nowrap border border-line bg-white px-2 py-1 text-xs font-bold text-brand-dark shadow-panel" style={{ borderRadius: 8 }}>
+              {shareStatus}
+            </span>
+          ) : null}
+        </div>
+        <IconButton
+          variant="frameless"
+          label="显示导航"
+          icon={<Minimize2 className="h-4 w-4" />}
+          onClick={onTogglePrototypeFullscreen}
+          className="text-brand-dark hover:bg-brand-soft hover:text-brand-dark"
+        />
+      </div>
+    </div>
+  );
+}
+
 export function GlobalLayout({ children, collapsed, activeTitle, activePath, prototypeFullscreen, shareStatus, onToggleSidebar, onBack, onShareCurrentPage, onCreateIteration, onTogglePrototypeFullscreen, onSelectPage, ...props }: GlobalLayoutProps) {
   const currentPage = activePath[activePath.length - 1];
 
   if (prototypeFullscreen) {
     return (
       <div className="min-h-screen bg-canvas">
-        <div className="fixed right-4 top-4 z-40">
-          <PrototypeActions
-            prototypeFullscreen={prototypeFullscreen}
-            shareStatus={shareStatus}
-            onShareCurrentPage={onShareCurrentPage}
-            onCreateIteration={onCreateIteration}
-            onTogglePrototypeFullscreen={onTogglePrototypeFullscreen}
-          />
-        </div>
+        <FullscreenActionDock
+          shareStatus={shareStatus}
+          onShareCurrentPage={onShareCurrentPage}
+          onTogglePrototypeFullscreen={onTogglePrototypeFullscreen}
+        />
         <main className="prototype-fullscreen-main min-h-screen w-full p-0">{children}</main>
       </div>
     );
