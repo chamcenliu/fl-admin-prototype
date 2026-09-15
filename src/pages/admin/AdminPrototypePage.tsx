@@ -37,7 +37,6 @@ type AdminDialog =
   | null;
 
 type AuthTemplateDialog =
-  | { type: "create" }
   | { type: "preview"; templateId: string }
   | { type: "scope"; templateIds: string[] }
   | { type: "delete"; templateId: string }
@@ -207,9 +206,27 @@ function AuthTemplateName({ template }: { template: AdminAuthTemplate }) {
   );
 }
 
+function createBlankAuthTemplate(index: number): AdminAuthTemplate {
+  return {
+    id: `auth-tpl-${Date.now()}`,
+    code: `AT-${String(index + 1).padStart(4, "0")}`,
+    name: "",
+    scope: "资源(0/20)",
+    applyTo: ["资源"],
+    resourceTypes: ["图片"],
+    status: "已启用",
+    recommended: false,
+    policyCode: "for public\ninitial:\n  auth",
+    policyTranslation: "",
+    dynamicTranslation: "",
+    updatedAt: "2026-09-15 12:00"
+  };
+}
+
 function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => void }) {
   const [templates, setTemplates] = useState<AdminAuthTemplate[]>(() => adminAuthTemplates.map(item => ({ ...item, applyTo: [...item.applyTo], resourceTypes: [...item.resourceTypes] })));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [creatingTemplate, setCreatingTemplate] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [queryDraft, setQueryDraft] = useState("");
   const [query, setQuery] = useState("");
@@ -266,10 +283,26 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
   }
 
   const editingTemplate = editingTemplateId ? templates.find(template => template.id === editingTemplateId) : undefined;
+  const creatingTemplateDraft = useMemo(() => createBlankAuthTemplate(templates.length), [templates.length]);
+
+  if (creatingTemplate) {
+    return (
+      <AuthTemplateFormPage
+        mode="create"
+        template={creatingTemplateDraft}
+        onCancel={() => setCreatingTemplate(false)}
+        onSave={template => {
+          saveTemplate(template);
+          setCreatingTemplate(false);
+        }}
+      />
+    );
+  }
 
   if (editingTemplate) {
     return (
-      <AuthTemplateEditPage
+      <AuthTemplateFormPage
+        mode="edit"
         template={editingTemplate}
         onCancel={() => setEditingTemplateId(null)}
         onSave={template => {
@@ -288,7 +321,7 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
           <h2>授权策略模板管理</h2>
           <p>维护用户端策略模板库，控制模板启停、推荐、适用范围和策略预览。</p>
         </div>
-        <button className="fl-admin-button" type="button" onClick={() => setDialog({ type: "create" })}>+ 新模板</button>
+        <button className="fl-admin-button" type="button" onClick={() => setCreatingTemplate(true)}>+ 新模板</button>
       </div>
 
       <section className="fl-admin-panel">
@@ -401,7 +434,6 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
           templates={templates}
           selectedTemplates={selectedTemplates}
           onClose={() => setDialog(null)}
-          onSave={saveTemplate}
           onDelete={deleteTemplate}
           onApplyScope={applyScope}
         />
@@ -410,7 +442,7 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
   );
 }
 
-function AuthTemplateEditPage({ template, onCancel, onSave }: { template: AdminAuthTemplate; onCancel: () => void; onSave: (template: AdminAuthTemplate) => void }) {
+function AuthTemplateFormPage({ mode, template, onCancel, onSave }: { mode: "create" | "edit"; template: AdminAuthTemplate; onCancel: () => void; onSave: (template: AdminAuthTemplate) => void }) {
   const [name, setName] = useState(template.name);
   const [status, setStatus] = useState<"已启用" | "已停用">(template.status);
   const [applyTo, setApplyTo] = useState<Set<string>>(() => new Set(template.applyTo));
@@ -440,9 +472,9 @@ function AuthTemplateEditPage({ template, onCancel, onSave }: { template: AdminA
     <>
       <div className="fl-admin-page-heading">
         <div>
-          <span className="fl-admin-eyebrow">授权策略模板管理 ＞ 编辑模板</span>
-          <h2>编辑授权策略模板</h2>
-          <p>正在编辑 {template.code} · {template.name}。长表单编辑使用独立页面承载，保存后返回模板列表。</p>
+          <span className="fl-admin-eyebrow">授权策略模板管理 ＞ {mode === "create" ? "新建模板" : "编辑模板"}</span>
+          <h2>{mode === "create" ? "新建授权策略模板" : "编辑授权策略模板"}</h2>
+          <p>{mode === "create" ? `将创建 ${template.code}。核心条目的长表单创建使用独立页面承载，保存后返回模板列表。` : `正在编辑 ${template.code} · ${template.name}。长表单编辑使用独立页面承载，保存后返回模板列表。`}</p>
         </div>
         <button className="fl-admin-secondary-button" type="button" onClick={onCancel}>返回列表</button>
       </div>
@@ -504,7 +536,6 @@ function AuthTemplateDialogView({
   templates,
   selectedTemplates,
   onClose,
-  onSave,
   onDelete,
   onApplyScope
 }: {
@@ -512,32 +543,12 @@ function AuthTemplateDialogView({
   templates: AdminAuthTemplate[];
   selectedTemplates: AdminAuthTemplate[];
   onClose: () => void;
-  onSave: (template: AdminAuthTemplate) => void;
   onDelete: (templateId: string) => void;
   onApplyScope: (templateIds: string[], resourceTypes: string[], applyTo: ("资源" | "展品")[]) => void;
 }) {
   const existing = "templateId" in dialog ? templates.find(template => template.id === dialog.templateId) : undefined;
-  const baseTemplate = existing || {
-    id: `auth-tpl-${Date.now()}`,
-    code: `AT-${String(templates.length + 1).padStart(4, "0")}`,
-    name: "",
-    scope: "资源(0/20)",
-    applyTo: ["资源"] as ("资源" | "展品")[],
-    resourceTypes: ["图片"],
-    status: "已启用" as const,
-    recommended: false,
-    policyCode: "for public\ninitial:\n  auth",
-    policyTranslation: "",
-    dynamicTranslation: "",
-    updatedAt: "2026-09-14 12:00"
-  };
-  const [name, setName] = useState(baseTemplate.name);
-  const [status, setStatus] = useState<"已启用" | "已停用">(baseTemplate.status);
-  const [applyTo, setApplyTo] = useState<Set<string>>(() => new Set(baseTemplate.applyTo));
-  const [resourceTypes, setResourceTypes] = useState<Set<string>>(() => new Set(baseTemplate.resourceTypes));
-  const [policyCode, setPolicyCode] = useState(baseTemplate.policyCode);
-  const [policyTranslation, setPolicyTranslation] = useState(baseTemplate.policyTranslation);
-  const [dynamicTranslation, setDynamicTranslation] = useState(baseTemplate.dynamicTranslation);
+  const [applyTo, setApplyTo] = useState<Set<string>>(() => new Set(["资源"]));
+  const [resourceTypes, setResourceTypes] = useState<Set<string>>(() => new Set(["图片"]));
 
   if (dialog.type === "preview" && existing) {
     return (
@@ -598,62 +609,6 @@ function AuthTemplateDialogView({
           <footer>
             <button className="fl-admin-secondary-button" type="button" onClick={onClose}>取消</button>
             <button className="fl-admin-button" type="button" onClick={() => onApplyScope(dialog.templateIds, [...resourceTypes], ([...applyTo].filter(Boolean) as ("资源" | "展品")[]))}>保存</button>
-          </footer>
-        </section>
-      </div>
-    );
-  }
-
-  if (dialog.type === "create") {
-    return (
-      <div className="fl-admin-modal-backdrop">
-        <section className="fl-admin-modal fl-admin-auth-form-modal" role="dialog" aria-modal="true">
-          <h3>新建模板</h3>
-          <p>授权策略模板管理 ＞ 新建模板</p>
-          <div className="fl-admin-auth-form">
-            <label className="fl-admin-dialog-field">是否启用
-              <select value={status} onChange={event => setStatus(event.target.value as "已启用" | "已停用")}>
-                <option value="已启用">启用</option>
-                <option value="已停用">停用</option>
-              </select>
-              <small>{status === "已启用" ? "在用户端策略模板库中显示，用户在创建授权策略时可使用此模板" : "在用户端策略模板库中隐藏"}</small>
-            </label>
-            <label className="fl-admin-dialog-field">名称<input value={name} onChange={event => setName(event.target.value)} placeholder="请输入授权策略模板名称" /></label>
-            <label className="fl-admin-dialog-field">策略代码<textarea value={policyCode} onChange={event => setPolicyCode(event.target.value)} rows={7} /></label>
-            <label className="fl-admin-dialog-field">策略翻译 (zh-CN)<textarea value={policyTranslation} onChange={event => setPolicyTranslation(event.target.value)} rows={3} /></label>
-            <label className="fl-admin-dialog-field">动态记录翻译 (zh-CN)【选填】<textarea value={dynamicTranslation} onChange={event => setDynamicTranslation(event.target.value)} rows={2} /></label>
-          </div>
-          <fieldset className="fl-admin-auth-fieldset">
-            <legend>应用于</legend>
-            {["资源", "展品"].map(item => <label key={item}><input type="checkbox" checked={applyTo.has(item)} onChange={() => setApplyTo(current => toggleSetValue(current, item))} /> {item}</label>)}
-          </fieldset>
-          <fieldset className="fl-admin-auth-fieldset resource-types">
-            <legend>适用资源类型</legend>
-            {adminResourceTypeOptions.map(type => <label key={type}><input type="checkbox" checked={resourceTypes.has(type)} onChange={() => setResourceTypes(current => toggleSetValue(current, type))} /> {type}</label>)}
-          </fieldset>
-          <div className="fl-admin-dialog-actions">
-            <button className="fl-admin-link-button" type="button" onClick={() => setResourceTypes(new Set(adminResourceTypeOptions))}>全选</button>
-            <span>|</span>
-            <button className="fl-admin-link-button" type="button" onClick={() => setResourceTypes(new Set())}>全不选</button>
-          </div>
-          <footer>
-            <button className="fl-admin-secondary-button" type="button" onClick={onClose}>取消</button>
-            <button className="fl-admin-button" type="button" onClick={() => {
-              const nextApplyTo = ([...applyTo].filter(Boolean) as ("资源" | "展品")[]);
-              const nextTypes = [...resourceTypes];
-              onSave({
-                ...baseTemplate,
-                name: name || "未命名模板",
-                status,
-                applyTo: nextApplyTo.length ? nextApplyTo : ["资源"],
-                resourceTypes: nextTypes.length ? nextTypes : ["图片"],
-                scope: `${nextApplyTo.includes("资源") ? `资源(${Math.max(1, nextTypes.length * 2)}/20)` : ""}${nextApplyTo.length === 2 ? " · " : ""}${nextApplyTo.includes("展品") ? `展品(${Math.max(1, nextTypes.length)}/20)` : ""}`,
-                policyCode,
-                policyTranslation,
-                dynamicTranslation,
-                updatedAt: "2026-09-14 12:00"
-              });
-            }}>保存</button>
           </footer>
         </section>
       </div>
