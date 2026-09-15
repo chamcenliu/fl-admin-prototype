@@ -1,9 +1,60 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { pageTree as initialPageTree } from "../mockData/pageTree";
 import type { PageNode } from "../types/page";
+import { readStorageValue, writeStorageValue } from "../utils/persistentState";
+
+const PAGE_TREE_STORAGE_KEY = "prototype-as-prd:page-tree";
 
 function cloneTree(tree: PageNode[]): PageNode[] {
   return tree.map(node => ({ ...node, children: node.children ? cloneTree(node.children) : undefined }));
+}
+
+function stripRuntimeFields(tree: PageNode[]): PageNode[] {
+  return tree.map(({ icon: _icon, children, ...node }) => ({
+    ...node,
+    children: children ? stripRuntimeFields(children) : undefined
+  }));
+}
+
+function findDefaultNode(nodeId: string): PageNode | undefined {
+  return findNode(initialPageTree, nodeId);
+}
+
+function hydrateRuntimeFields(tree: PageNode[]): PageNode[] {
+  return tree.map(node => {
+    const defaultNode = findDefaultNode(node.id);
+    return {
+      ...node,
+      icon: defaultNode?.icon,
+      sourceFile: node.sourceFile || defaultNode?.sourceFile,
+      status: node.status || defaultNode?.status,
+      children: node.children ? hydrateRuntimeFields(node.children) : undefined
+    };
+  });
+}
+
+function collectPageIds(tree: PageNode[]): Set<string> {
+  const ids = new Set<string>();
+  for (const node of tree) {
+    if (node.type === "page") ids.add(node.id);
+    node.children?.forEach(child => collectPageIds([child]).forEach(id => ids.add(id)));
+  }
+  return ids;
+}
+
+function collectMissingNodes(defaultTree: PageNode[], savedPageIds: Set<string>): PageNode[] {
+  return defaultTree.flatMap(node => {
+    if (node.type === "page") return savedPageIds.has(node.id) ? [] : [cloneTree([node])[0]];
+
+    const missingChildren = collectMissingNodes(node.children || [], savedPageIds);
+    return missingChildren.length ? [{ ...node, children: missingChildren }] : [];
+  });
+}
+
+function mergeMissingDefaultPages(savedTree: PageNode[]) {
+  const next = cloneTree(savedTree);
+  const missingNodes = collectMissingNodes(initialPageTree, collectPageIds(next));
+  return missingNodes.length ? [...next, ...missingNodes] : next;
 }
 
 function findNode(tree: PageNode[], nodeId: string): PageNode | undefined {
@@ -115,13 +166,23 @@ function insertIntoFolder(tree: PageNode[], folderId: string, movedNode: PageNod
 }
 
 export function usePageTree() {
-  const [tree, setTree] = useState<PageNode[]>(() => cloneTree(initialPageTree));
+  const [tree, setTree] = useState<PageNode[]>(() =>
+    mergeMissingDefaultPages(hydrateRuntimeFields(readStorageValue(PAGE_TREE_STORAGE_KEY, cloneTree(initialPageTree))))
+  );
   const defaultPageId = useMemo(() => findFirstPageId(tree), [tree]);
   const [activePageId, setActivePageId] = useState(() => findFirstPageId(initialPageTree));
 
   const activePage = useMemo(() => findNode(tree, activePageId), [tree, activePageId]);
   const activePath = useMemo(() => findNodePath(tree, activePageId), [tree, activePageId]);
   const pageExists = (pageId: string) => Boolean(findNode(tree, pageId)?.type === "page");
+
+  useEffect(() => {
+    setTree(current => mergeMissingDefaultPages(current));
+  }, [setTree]);
+
+  useEffect(() => {
+    writeStorageValue(PAGE_TREE_STORAGE_KEY, stripRuntimeFields(tree));
+  }, [tree]);
 
   function createFolder(title: string) {
     const normalizedTitle = title.trim();

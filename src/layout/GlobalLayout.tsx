@@ -110,7 +110,7 @@ export function GlobalLayout({ children, collapsed, activeTitle, activePath, pro
           onShareCurrentPage={onShareCurrentPage}
           onTogglePrototypeFullscreen={onTogglePrototypeFullscreen}
         />
-        <main className="prototype-fullscreen-main min-h-screen w-full p-0">{children}</main>
+        <main className="mx-auto w-full max-w-7xl px-6 py-20">{children}</main>
       </div>
     );
   }
@@ -161,7 +161,7 @@ export function GlobalLayout({ children, collapsed, activeTitle, activePath, pro
       <div className={cn("grid", collapsed ? "grid-cols-[72px_minmax(0,1fr)]" : "grid-cols-[272px_minmax(0,1fr)]")}>
         <Sidebar collapsed={collapsed} onToggle={onToggleSidebar} onSelectPage={onSelectPage} {...props} />
         <section className="min-w-0">
-          <main className="prototype-display-main w-full px-6 py-6">{children}</main>
+          <main className="mx-auto w-full max-w-7xl px-6 py-6">{children}</main>
         </section>
       </div>
     </div>

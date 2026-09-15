@@ -1,6 +1,7 @@
 import { PrdDrawer } from "./components/prd/PrdDrawer";
 import { VersionBadge } from "./components/version/VersionBadge";
 import { currentVersion } from "./mockData/versions";
+import { useIterations } from "./hooks/useIterations";
 import { usePageTree } from "./hooks/usePageTree";
 import { usePrdDrawer } from "./hooks/usePrdDrawer";
 import { GlobalLayout } from "./layout/GlobalLayout";
@@ -8,7 +9,8 @@ import { IterationsModal } from "./pages/VersionsPage";
 import { OrderApprovalPage } from "./pages/examples/OrderApprovalPage";
 import { AdminPrototypePage } from "./pages/admin/AdminPrototypePage";
 import { EmptyState } from "./components/ui/EmptyState";
-import { useEffect, useState } from "react";
+import { findFirstPageId, findNode, findNodePath } from "./utils/pageTreeArchive";
+import { useEffect, useMemo, useState } from "react";
 
 function renderPage(activePageId: string, openPrdNote: (noteId: string) => void, onNavigate: (pageId: string) => void) {
   if (activePageId.startsWith("admin-")) return <AdminPrototypePage initialPageId={activePageId} onNavigate={onNavigate} onOpenPrd={openPrdNote} />;
@@ -23,28 +25,43 @@ export default function App() {
   const [shareStatus, setShareStatus] = useState("");
   const [iterationsOpen, setIterationsOpen] = useState(false);
   const pageTreeState = usePageTree();
+  const iterationsState = useIterations(pageTreeState.tree);
   const prdDrawer = usePrdDrawer();
+  const activeTree = useMemo(
+    () => iterationsState.activeIteration?.pageTreeSnapshot?.length ? iterationsState.activeIteration.pageTreeSnapshot : pageTreeState.tree,
+    [iterationsState.activeIteration, pageTreeState.tree]
+  );
+  const activePage = useMemo(() => findNode(activeTree, pageTreeState.activePageId), [activeTree, pageTreeState.activePageId]);
+  const activePath = useMemo(() => findNodePath(activeTree, pageTreeState.activePageId), [activeTree, pageTreeState.activePageId]);
+  const activeTreeDefaultPageId = useMemo(() => findFirstPageId(activeTree), [activeTree]);
+  const activeTreePageExists = (pageId: string) => findNode(activeTree, pageId)?.type === "page";
 
   useEffect(() => {
     const readPageFromHash = () => {
       const pageId = window.location.hash.replace("#/", "");
-      if (pageId && pageTreeState.pageExists(pageId)) {
+      if (pageId && activeTreePageExists(pageId)) {
         pageTreeState.setActivePageId(pageId);
         return;
       }
 
-      if (pageId && pageTreeState.defaultPageId) {
-        window.location.hash = `/${pageTreeState.defaultPageId}`;
+      if (pageId && activeTreeDefaultPageId) {
+        window.location.hash = `/${activeTreeDefaultPageId}`;
       }
     };
 
     readPageFromHash();
     window.addEventListener("hashchange", readPageFromHash);
     return () => window.removeEventListener("hashchange", readPageFromHash);
-  }, [pageTreeState]);
+  }, [activeTree, activeTreeDefaultPageId, pageTreeState]);
+
+  useEffect(() => {
+    if (!activeTreeDefaultPageId || activeTreePageExists(pageTreeState.activePageId)) return;
+    window.location.hash = `/${activeTreeDefaultPageId}`;
+    pageTreeState.setActivePageId(activeTreeDefaultPageId);
+  }, [activeTree, activeTreeDefaultPageId, pageTreeState]);
 
   function selectPage(pageId: string) {
-    if (pageId === pageTreeState.activePageId || !pageTreeState.pageExists(pageId)) return;
+    if (pageId === pageTreeState.activePageId || !activeTreePageExists(pageId)) return;
     window.location.hash = `/${pageId}`;
     pageTreeState.setActivePageId(pageId);
   }
@@ -65,9 +82,9 @@ export default function App() {
   return (
     <>
       <GlobalLayout
-        tree={pageTreeState.tree}
-        activeTitle={pageTreeState.activePage?.title}
-        activePath={pageTreeState.activePath}
+        tree={activeTree}
+        activeTitle={activePage?.title}
+        activePath={activePath}
         activePageId={pageTreeState.activePageId}
         collapsed={collapsed}
         prototypeFullscreen={prototypeFullscreen}
@@ -88,7 +105,18 @@ export default function App() {
 
       <VersionBadge version={currentVersion} />
       <PrdDrawer note={prdDrawer.activeNote} onClose={prdDrawer.closePrdNote} />
-      {iterationsOpen ? <IterationsModal onClose={() => setIterationsOpen(false)} /> : null}
+      {iterationsOpen ? (
+        <IterationsModal
+          pageTree={pageTreeState.tree}
+          iterations={iterationsState.iterations}
+          activeIterationId={iterationsState.activeIterationId}
+          onClose={() => setIterationsOpen(false)}
+          onCreateIteration={iterationsState.createIteration}
+          onUpdateIteration={iterationsState.updateIteration}
+          onDeleteIteration={iterationsState.deleteIteration}
+          onSwitchIteration={iterationsState.setActiveIterationId}
+        />
+      ) : null}
     </>
   );
 }

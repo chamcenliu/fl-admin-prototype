@@ -2,36 +2,35 @@ import { CheckCircle2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "../components/ui/Button";
 import { IconButton } from "../components/ui/IconButton";
-import { pageTree } from "../mockData/pageTree";
-import { iterationVersions } from "../mockData/versions";
 import type { PageNode } from "../types/page";
 import type { IterationVersion } from "../types/version";
 
 type EditableIteration = Pick<IterationVersion, "id" | "title" | "pageIds">;
 
-function collectPages(nodes: PageNode[]): Array<Pick<PageNode, "id" | "title">> {
-  return nodes.flatMap(node => [
-    ...(node.type === "page" ? [{ id: node.id, title: node.title }] : []),
-    ...(node.children ? collectPages(node.children) : [])
-  ]);
-}
-
 function IterationDialog({
   title,
+  pageTree,
   initialValue = "",
   initialPageIds = [],
   onClose,
   onSubmit
 }: {
   title: string;
+  pageTree: PageNode[];
   initialValue?: string;
   initialPageIds?: string[];
   onClose: () => void;
   onSubmit: (name: string, pageIds: string[]) => void;
 }) {
-  const pages = collectPages(pageTree);
   const [name, setName] = useState(initialValue);
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set(initialPageIds));
+  const togglePage = (pageId: string, checked: boolean) => {
+    setSelectedPageIds(current => {
+      const next = new Set(current);
+      checked ? next.add(pageId) : next.delete(pageId);
+      return next;
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink/25 px-4">
@@ -64,21 +63,8 @@ function IterationDialog({
         <fieldset className="mt-4 grid gap-2">
           <legend className="mb-2 text-sm font-bold">绑定页面</legend>
           <div className="grid max-h-48 gap-2 overflow-y-auto border border-line p-3" style={{ borderRadius: 8 }}>
-            {pages.map(page => (
-              <label key={page.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selectedPageIds.has(page.id)}
-                  onChange={event => {
-                    setSelectedPageIds(current => {
-                      const next = new Set(current);
-                      event.target.checked ? next.add(page.id) : next.delete(page.id);
-                      return next;
-                    });
-                  }}
-                />
-                <span>{page.title}</span>
-              </label>
+            {pageTree.map(node => (
+              <PageBindingNode key={node.id} node={node} selectedPageIds={selectedPageIds} onTogglePage={togglePage} />
             ))}
           </div>
         </fieldset>
@@ -89,6 +75,41 @@ function IterationDialog({
         </footer>
       </form>
     </div>
+  );
+}
+
+function PageBindingNode({
+  node,
+  selectedPageIds,
+  depth = 0,
+  onTogglePage
+}: {
+  node: PageNode;
+  selectedPageIds: Set<string>;
+  depth?: number;
+  onTogglePage: (pageId: string, checked: boolean) => void;
+}) {
+  if (node.type === "folder") {
+    return (
+      <div className="grid gap-2">
+        <div className="text-xs font-bold text-muted" style={{ paddingLeft: depth * 16 }}>{node.title}</div>
+        {node.children?.map(child => (
+          <PageBindingNode key={child.id} node={child} selectedPageIds={selectedPageIds} depth={depth + 1} onTogglePage={onTogglePage} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <label className="flex items-center gap-2 text-sm" style={{ paddingLeft: depth * 16 }}>
+      <input
+        type="checkbox"
+        checked={selectedPageIds.has(node.id)}
+        onChange={event => onTogglePage(node.id, event.target.checked)}
+      />
+      <span>{node.title}</span>
+      {node.sourceFile ? <code className="ml-auto truncate rounded bg-slate-100 px-2 py-0.5 text-xs text-muted">{node.sourceFile}</code> : null}
+    </label>
   );
 }
 
@@ -117,12 +138,26 @@ function DeleteConfirmDialog({ name, onClose, onConfirm }: { name: string; onClo
   );
 }
 
-export function IterationsModal({ onClose }: { onClose: () => void }) {
+export function IterationsModal({
+  pageTree,
+  iterations,
+  activeIterationId,
+  onClose,
+  onCreateIteration,
+  onUpdateIteration,
+  onDeleteIteration,
+  onSwitchIteration
+}: {
+  pageTree: PageNode[];
+  iterations: IterationVersion[];
+  activeIterationId: string;
+  onClose: () => void;
+  onCreateIteration: (name: string, pageIds: string[]) => void;
+  onUpdateIteration: (iterationId: string, name: string, pageIds: string[]) => void;
+  onDeleteIteration: (iterationId: string) => void;
+  onSwitchIteration: (iterationId: string) => void;
+}) {
   const [query, setQuery] = useState("");
-  const [activeIterationId, setActiveIterationId] = useState(iterationVersions[0].id);
-  const [iterations, setIterations] = useState<EditableIteration[]>(() =>
-    iterationVersions.map(item => ({ id: item.id, title: item.title, pageIds: item.pageIds }))
-  );
   const [creating, setCreating] = useState(false);
   const [editingIteration, setEditingIteration] = useState<EditableIteration | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EditableIteration | null>(null);
@@ -132,23 +167,6 @@ export function IterationsModal({ onClose }: { onClose: () => void }) {
     if (!keyword) return iterations;
     return iterations.filter(item => item.title.toLowerCase().includes(keyword));
   }, [iterations, query]);
-
-  function createIteration(name: string, pageIds: string[]) {
-    const id = `iteration-${Date.now()}`;
-    setIterations(current => [{ id, title: name, pageIds }, ...current]);
-    setActiveIterationId(id);
-  }
-
-  function renameIteration(iterationId: string, name: string, pageIds: string[]) {
-    setIterations(current => current.map(item => (item.id === iterationId ? { ...item, title: name, pageIds } : item)));
-  }
-
-  function deleteIteration(iterationId: string) {
-    setIterations(current => current.filter(item => item.id !== iterationId));
-    if (activeIterationId === iterationId) {
-      setActiveIterationId(iterations.find(item => item.id !== iterationId)?.id || "");
-    }
-  }
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink/25 px-4 py-6">
@@ -192,7 +210,7 @@ export function IterationsModal({ onClose }: { onClose: () => void }) {
                 </td>
                 <td className="border-b border-line px-4 py-4">
                   <div className="flex justify-end gap-2">
-                    <IconButton label="切换到此迭代" icon={<CheckCircle2 className="h-4 w-4" />} onClick={() => setActiveIterationId(item.id)} />
+                    <IconButton label="切换到此迭代" icon={<CheckCircle2 className="h-4 w-4" />} onClick={() => onSwitchIteration(item.id)} />
                     <IconButton label="重命名" icon={<Pencil className="h-4 w-4" />} onClick={() => setEditingIteration(item)} />
                     <IconButton label="删除" icon={<Trash2 className="h-4 w-4" />} className="text-red-600 hover:text-red-700" onClick={() => setDeleteTarget(item)} />
                   </div>
@@ -204,16 +222,17 @@ export function IterationsModal({ onClose }: { onClose: () => void }) {
       </section>
 
       {creating ? (
-        <IterationDialog title="新建迭代" onClose={() => setCreating(false)} onSubmit={createIteration} />
+        <IterationDialog title="新建迭代" pageTree={pageTree} onClose={() => setCreating(false)} onSubmit={onCreateIteration} />
       ) : null}
 
       {editingIteration ? (
         <IterationDialog
           title="重命名迭代"
+          pageTree={pageTree}
           initialValue={editingIteration.title}
           initialPageIds={editingIteration.pageIds}
           onClose={() => setEditingIteration(null)}
-          onSubmit={(name, pageIds) => renameIteration(editingIteration.id, name, pageIds)}
+          onSubmit={(name, pageIds) => onUpdateIteration(editingIteration.id, name, pageIds)}
         />
       ) : null}
 
@@ -221,7 +240,7 @@ export function IterationsModal({ onClose }: { onClose: () => void }) {
         <DeleteConfirmDialog
           name={deleteTarget.title}
           onClose={() => setDeleteTarget(null)}
-          onConfirm={() => deleteIteration(deleteTarget.id)}
+          onConfirm={() => onDeleteIteration(deleteTarget.id)}
         />
       ) : null}
       </section>

@@ -1,3 +1,5 @@
+import type { PageNode } from "./page";
+
 export type IterationStatus = "active" | "archived";
 
 export type IterationVersion = {
@@ -8,6 +10,7 @@ export type IterationVersion = {
   owner: string;
   lastUpdated: string;
   pageIds: string[];
+  pageTreeSnapshot?: PageNode[];
   requirementIds: string[];
   summary: string;
 };
