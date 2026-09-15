@@ -334,6 +334,10 @@
   padding: 0 12px;
 }
 
+.fl-admin-search-box.compact {
+  width: min(300px, 28vw);
+}
+
 .fl-admin-search-box input {
   width: 100%;
   border: 0;
@@ -604,10 +608,9 @@
 
 .fl-admin-auth-filter {
   display: flex;
-  min-height: 58px;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--admin-line);
   background: #fff;
@@ -616,7 +619,7 @@
 .fl-admin-status-filter {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--admin-muted);
   font-size: 13px;
   font-weight: 800;
@@ -629,6 +632,10 @@
   background: #fff;
   padding: 0 12px;
   color: var(--admin-text);
+}
+
+.fl-admin-auth-filter .fl-admin-tag-filter {
+  gap: 7px;
 }
 
 .fl-admin-filter-token {

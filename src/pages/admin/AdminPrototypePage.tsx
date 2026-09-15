@@ -201,7 +201,6 @@ function AuthTemplateName({ template }: { template: AdminAuthTemplate }) {
   return (
     <div className="fl-admin-auth-name">
       <button className="fl-admin-record-link" type="button">{template.name}</button>
-      <span>{template.code}</span>
     </div>
   );
 }
@@ -230,7 +229,9 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [queryDraft, setQueryDraft] = useState("");
   const [query, setQuery] = useState("");
+  const [applyToFilter, setApplyToFilter] = useState("全部对象");
   const [status, setStatus] = useState("全部状态");
+  const [recommendFilter, setRecommendFilter] = useState("全部推荐状态");
   const [scopeFilter, setScopeFilter] = useState<Set<string>>(() => new Set());
   const [dialog, setDialog] = useState<AuthTemplateDialog>(null);
   const [page, setPage] = useState(1);
@@ -239,11 +240,13 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
     const activeScopes = [...scopeFilter];
     return templates.filter(template => {
       const matchesQuery = !query || [template.code, template.name, template.policyTranslation, template.dynamicTranslation].some(value => value.toLowerCase().includes(query.toLowerCase()));
+      const matchesApplyTo = applyToFilter === "全部对象" || template.applyTo.includes(applyToFilter as "资源" | "展品");
       const matchesStatus = status === "全部状态" || template.status === status;
+      const matchesRecommend = recommendFilter === "全部推荐状态" || (recommendFilter === "已推荐" ? template.recommended : !template.recommended);
       const matchesScope = !activeScopes.length || activeScopes.some(item => template.resourceTypes.includes(item));
-      return matchesQuery && matchesStatus && matchesScope;
+      return matchesQuery && matchesApplyTo && matchesStatus && matchesRecommend && matchesScope;
     });
-  }, [query, scopeFilter, status, templates]);
+  }, [applyToFilter, query, recommendFilter, scopeFilter, status, templates]);
 
   const allVisibleSelected = filteredTemplates.length > 0 && filteredTemplates.every(template => selectedIds.has(template.id));
   const selectedTemplates = templates.filter(template => selectedIds.has(template.id));
@@ -251,7 +254,9 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
   function resetFilters() {
     setQueryDraft("");
     setQuery("");
+    setApplyToFilter("全部对象");
     setStatus("全部状态");
+    setRecommendFilter("全部推荐状态");
     setScopeFilter(new Set());
     setSelectedIds(new Set());
     setPage(1);
@@ -319,7 +324,6 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
         <div>
           <span className="fl-admin-eyebrow">运营</span>
           <h2>授权策略模板管理</h2>
-          <p>维护用户端策略模板库，控制模板启停、推荐、适用范围和策略预览。</p>
         </div>
         <button className="fl-admin-button" type="button" onClick={() => setCreatingTemplate(true)}>+ 新模板</button>
       </div>
@@ -334,8 +338,19 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
         ) : (
           <PrdWrapper noteId="prd-fl-admin-auth-template-filter" onOpen={onOpenPrd}>
             <div className="fl-admin-auth-filter">
+              <label className="fl-admin-search-box compact">
+                <span>⌕</span>
+                <input value={queryDraft} onChange={event => setQueryDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter") { setQuery(queryDraft); setPage(1); } }} placeholder="搜索模板名称或翻译内容" />
+              </label>
+              <label className="fl-admin-status-filter">适用对象
+                <select value={applyToFilter} onChange={event => { setApplyToFilter(event.target.value); setPage(1); }}>
+                  <option>全部对象</option>
+                  <option>资源</option>
+                  <option>展品</option>
+                </select>
+              </label>
               <div className="fl-admin-tag-filter">
-                <span>适用范围：</span>
+                <span>资源类型</span>
                 {["图片", "插画", "音乐", "音频"].map(type => (
                   <button
                     key={type}
@@ -350,29 +365,26 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
                     {type}
                   </button>
                 ))}
-                {[...scopeFilter].map(type => <span key={type} className="fl-admin-filter-token">{type}<button type="button" onClick={() => setScopeFilter(current => toggleSetValue(current, type))}>×</button></span>)}
               </div>
-              <label className="fl-admin-status-filter">状态：
+              <label className="fl-admin-status-filter">状态
                 <select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}>
                   <option>全部状态</option>
                   <option>已启用</option>
                   <option>已停用</option>
                 </select>
               </label>
+              <label className="fl-admin-status-filter">推荐
+                <select value={recommendFilter} onChange={event => { setRecommendFilter(event.target.value); setPage(1); }}>
+                  <option>全部推荐状态</option>
+                  <option>已推荐</option>
+                  <option>未推荐</option>
+                </select>
+              </label>
+              <button className="fl-admin-button" type="button" onClick={() => { setQuery(queryDraft); setPage(1); }}>搜索</button>
+              {(query || queryDraft || applyToFilter !== "全部对象" || status !== "全部状态" || recommendFilter !== "全部推荐状态" || scopeFilter.size) ? <button className="fl-admin-secondary-button" type="button" onClick={resetFilters}>重置</button> : null}
             </div>
           </PrdWrapper>
         )}
-
-        <PrdWrapper noteId="prd-fl-admin-auth-template-search" onOpen={onOpenPrd}>
-          <div className="fl-admin-user-search">
-            <label className="fl-admin-search-box">
-              <span>⌕</span>
-              <input value={queryDraft} onChange={event => setQueryDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter") { setQuery(queryDraft); setPage(1); } }} placeholder="搜索编号、授权策略模板或翻译内容" />
-            </label>
-            <button className="fl-admin-button" type="button" onClick={() => { setQuery(queryDraft); setPage(1); }}>搜索</button>
-            {(query || status !== "全部状态" || scopeFilter.size) ? <button className="fl-admin-secondary-button" type="button" onClick={resetFilters}>重置</button> : null}
-          </div>
-        </PrdWrapper>
 
         <PrdWrapper noteId="prd-fl-admin-auth-template-table" onOpen={onOpenPrd}>
           <div className="fl-admin-table-wrap">
