@@ -661,9 +661,17 @@
 }
 
 .fl-admin-auth-name {
-  display: grid;
+  display: flex;
+  align-items: center;
   min-width: 140px;
-  gap: 5px;
+}
+
+.fl-admin-auth-name .fl-admin-record-link {
+  display: inline-flex;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 0;
+  text-align: left;
 }
 
 .fl-admin-auth-name span,

@@ -392,7 +392,7 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
               <thead>
                 <tr>
                   <th><input type="checkbox" checked={allVisibleSelected} onChange={event => setSelectedIds(event.target.checked ? new Set(filteredTemplates.map(template => template.id)) : new Set())} aria-label="全选授权策略模板" /></th>
-                  {["编号", "授权策略模板", "适用范围", "状态", "操作"].map(column => <th key={column}>{column}</th>)}
+                  {["编号", "模板标题", "适用范围", "状态", "操作"].map(column => <th key={column}>{column}</th>)}
                 </tr>
               </thead>
               <tbody>
