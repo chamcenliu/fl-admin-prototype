@@ -33,66 +33,10 @@ export const navGroups = [
 ];
 
 export const userManagementRows = [
-  {
-    id: "user-001",
-    name: "chtes",
-    tags: ["测试", "资源作者"],
-    lastLogin: "今天",
-    resources: 20,
-    nodes: 1,
-    contracts: 3,
-    trades: 2,
-    balance: 1000,
-    contacts: ["138 1234 1234", "chtes@qq.com"],
-    registeredAt: "2020-09-01",
-    status: "正常",
-    freezeReason: ""
-  },
-  {
-    id: "user-002",
-    name: "chlll",
-    tags: ["资源作者"],
-    lastLogin: "一周前",
-    resources: 0,
-    nodes: 0,
-    contracts: 0,
-    trades: 3,
-    balance: 200,
-    contacts: ["chtes@qq.com"],
-    registeredAt: "2020-09-01",
-    status: "待审核",
-    freezeReason: ""
-  },
-  {
-    id: "user-003",
-    name: "chtes01",
-    tags: [],
-    lastLogin: "07-07",
-    resources: 20,
-    nodes: 1,
-    contracts: 3,
-    trades: 1,
-    balance: 1000,
-    contacts: ["138 1234 1234"],
-    registeredAt: "2020-09-01",
-    status: "冻结",
-    freezeReason: "恶意操作"
-  },
-  {
-    id: "user-004",
-    name: "chlll01",
-    tags: ["测试"],
-    lastLogin: "2019-07-07",
-    resources: 0,
-    nodes: 0,
-    contracts: 0,
-    trades: 0,
-    balance: 200,
-    contacts: ["138 1234 1234", "chtes@qq.com"],
-    registeredAt: "2018-08-01",
-    status: "正常",
-    freezeReason: ""
-  }
+  { id: "user-001", name: "chtes", tags: ["测试", "资源作者"], lastLogin: "今天", resources: 20, nodes: 1, contracts: 3, trades: 2, balance: 1000, contacts: ["138 1234 1234", "chtes@qq.com"], registeredAt: "2020-09-01", status: "正常", freezeReason: "" },
+  { id: "user-002", name: "chlll", tags: ["资源作者"], lastLogin: "一周前", resources: 0, nodes: 0, contracts: 0, trades: 3, balance: 200, contacts: ["chtes@qq.com"], registeredAt: "2020-09-01", status: "待审核", freezeReason: "" },
+  { id: "user-003", name: "chtes01", tags: [], lastLogin: "07-07", resources: 20, nodes: 1, contracts: 3, trades: 1, balance: 1000, contacts: ["138 1234 1234"], registeredAt: "2020-09-01", status: "冻结", freezeReason: "恶意操作" },
+  { id: "user-004", name: "chlll01", tags: ["测试"], lastLogin: "2019-07-07", resources: 0, nodes: 0, contracts: 0, trades: 0, balance: 200, contacts: ["138 1234 1234", "chtes@qq.com"], registeredAt: "2018-08-01", status: "正常", freezeReason: "" }
 ];
 
 const baseRows = {
@@ -167,7 +111,7 @@ const genericNames = {
   rewards: ["奖励名称", "所属活动", "奖励类型", "库存", "状态"],
   "reward-records": ["发放编号", "奖励名称", "领取用户", "发放时间", "状态"],
   ads: ["广告名称", "广告位置", "投放周期", "点击量", "状态"],
-  "auth-templates": ["模板名称", "适用资源类型", "授权策略数", "更新时间", "状态"],
+  "auth-templates": ["编号", "模板标题", "适用范围", "状态"],
   "demo-nodes": ["示例节点", "节点域名", "展示分类", "更新时间", "状态"],
   "review-policies": ["策略名称", "审核对象", "处置动作", "更新时间", "状态"],
   "version-review": ["资源版本", "提交用户", "资源类型", "提交时间", "审核状态"],
@@ -197,6 +141,21 @@ for (const [id, columns] of Object.entries(genericNames)) {
     primary: `新建${columns[0]}`
   };
 }
+
+definitions["auth-templates"] = {
+  eyebrow: "运营中心",
+  columns: ["编号", "模板标题", "适用范围", "状态"],
+  rows: [
+    ["AT-0001", "永久免费", "资源(10/20) · 展品(3/20) / 图片 · 摄影 · 插画", "已启用"],
+    ["AT-0002", "免费试用后订阅", "展品(15/20) / 音乐 · 音频 · 播客节目", "已启用"],
+    ["AT-0003", "付费订阅", "资源(8/20) · 展品(6/20) / 图片 · 音乐 · 音频", "已启用"],
+    ["AT-0004", "永久解锁", "资源(10/20) · 展品(3/20) / 图片 · 插画", "已停用"],
+    ["AT-0005", "限时特价", "资源(4/20) · 展品(4/20) / 音乐 · 音频", "已启用"],
+    ["AT-0006", "限时免费", "资源(6/20) / 未来新增类型 · 图片 · 摄影", "已停用"]
+  ],
+  filters: ["全部状态", "已启用", "已停用"],
+  primary: "新模板"
+};
 
 export const pageDefinitions = definitions;
 
