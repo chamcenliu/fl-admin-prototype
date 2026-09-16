@@ -23,12 +23,69 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Restore latest prototype build
+      - name: Mirror latest approved prototype build
+        env:
+          SOURCE_URL: https://freelog-admin-prototype.freelog-6292.chatgpt.site/
+          PAGES_BASE: /fl-admin-prototype/
         run: |
-          mkdir -p dist
-          cat .github/page-dist/dist.zip.b64.* > /tmp/fl-admin-prototype-dist.zip.b64
-          base64 -d /tmp/fl-admin-prototype-dist.zip.b64 > /tmp/fl-admin-prototype-dist.zip
-          unzip -q /tmp/fl-admin-prototype-dist.zip -d dist
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist/assets
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const sourceUrl = process.env.SOURCE_URL;
+          const pagesBase = process.env.PAGES_BASE;
+          const distDir = path.resolve('dist');
+
+          async function fetchText(url) {
+            const res = await fetch(url, { redirect: 'follow' });
+            if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+            return await res.text();
+          }
+
+          async function fetchBuffer(url) {
+            const res = await fetch(url, { redirect: 'follow' });
+            if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+            return Buffer.from(await res.arrayBuffer());
+          }
+
+          function assetUrlsFrom(html) {
+            const urls = new Set();
+            const patterns = [
+              /(?:src|href)="([^"]*\/assets\/[^"]+)"/g,
+              /(?:src|href)='([^']*\/assets\/[^']+)'/g,
+            ];
+            for (const pattern of patterns) {
+              for (const match of html.matchAll(pattern)) urls.add(match[1]);
+            }
+            return [...urls];
+          }
+
+          const indexUrl = new URL(sourceUrl);
+          let html = await fetchText(indexUrl.href);
+          const assets = assetUrlsFrom(html);
+
+          for (const asset of assets) {
+            const assetUrl = new URL(asset, indexUrl).href;
+            const assetPath = new URL(assetUrl).pathname.replace(/^\//, '');
+            const relativeAssetPath = assetPath.replace(/^assets\//, 'assets/');
+            const targetPath = path.join(distDir, relativeAssetPath);
+            fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+            fs.writeFileSync(targetPath, await fetchBuffer(assetUrl));
+          }
+
+          html = html
+            .replace(/(src|href)="\/assets\//g, `$1="${pagesBase}assets/`)
+            .replace(/(src|href)='\/assets\//g, `$1='${pagesBase}assets/`)
+            .replace(/(src|href)="assets\//g, `$1="${pagesBase}assets/`)
+            .replace(/(src|href)='assets\//g, `$1='${pagesBase}assets/`);
+
+          fs.writeFileSync(path.join(distDir, 'index.html'), html);
+          fs.writeFileSync(path.join(distDir, '404.html'), html);
+          console.log(`Mirrored ${assets.length} assets from ${sourceUrl}`);
+          NODE
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
