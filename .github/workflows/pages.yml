@@ -23,8 +23,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Build static prototype
-        run: node build.mjs
+      - name: Restore latest prototype build
+        run: |
+          mkdir -p dist
+          cat .github/page-dist/dist.zip.b64.* > /tmp/fl-admin-prototype-dist.zip.b64
+          base64 -d /tmp/fl-admin-prototype-dist.zip.b64 > /tmp/fl-admin-prototype-dist.zip
+          unzip -q /tmp/fl-admin-prototype-dist.zip -d dist
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
