@@ -21,13 +21,34 @@ export type AdminAuthTemplate = {
   code: string;
   name: string;
   scope: string;
-  applyTo: ("资源" | "展品")[];
+  applyTo: ("资源" | "资源合集" | "展品" | "展品合集")[];
   resourceTypes: string[];
   status: "已启用" | "已停用";
   recommended: boolean;
   policyCode: string;
   policyTranslation: string;
   dynamicTranslation: string;
+  updatedAt: string;
+};
+
+export type AdminReviewPolicy = {
+  id: string;
+  name: string;
+  object: "资源版本" | "资源信息" | "用户信息" | "节点信息";
+  status: "已启用" | "未启用";
+  updatedAt: string;
+  trigger: "发布前" | "发布后" | "实时";
+  contentType: "复合" | "文本" | "图片" | "音频" | "视频";
+  description: string;
+};
+
+export type AdminReviewRule = {
+  id: string;
+  policyId: string;
+  name: string;
+  type: "关键词" | "正则表达式" | "模型识别";
+  object: "资源版本" | "资源信息" | "用户信息" | "节点信息";
+  status: "已启用" | "未启用";
   updatedAt: string;
 };
 
@@ -181,16 +202,16 @@ export const adminRecentTasks = [
   ["支付路由异常", "微信支付 · CN-CNY-02", "支付服务", "1 小时前", "已定位"]
 ];
 
-export const adminResourceTypeOptions = ["未来新增类型", "图片", "摄影", "音乐", "播客节目", "音频", "插画"];
+export const adminResourceTypeOptions = ["图片", "插画", "照片", "音频", "音乐", "音效", "视频", "长视频", "短视频", "阅读", "文章", "条漫", "页漫", "日漫", "主题", "插件", "游戏", "音乐专辑", "连载博客", "专栏", "连载小说", "连载漫画"];
 
 export const adminAuthTemplates: AdminAuthTemplate[] = [
   {
     id: "auth-tpl-001",
     code: "AT-0001",
     name: "永久免费",
-    scope: "资源(10/20) · 展品(3/20)",
+    scope: "资源、展品 · 插画 / 照片",
     applyTo: ["资源", "展品"],
-    resourceTypes: ["图片", "摄影", "插画"],
+    resourceTypes: ["插画", "照片"],
     status: "已启用",
     recommended: true,
     policyCode: "for public\ninitial:\n  auth",
@@ -202,9 +223,9 @@ export const adminAuthTemplates: AdminAuthTemplate[] = [
     id: "auth-tpl-002",
     code: "AT-0002",
     name: "免费试用后订阅",
-    scope: "展品(15/20)",
-    applyTo: ["展品"],
-    resourceTypes: ["音乐", "音频", "播客节目"],
+    scope: "资源合集 · 音乐专辑 / 连载博客",
+    applyTo: ["资源合集"],
+    resourceTypes: ["音乐专辑", "连载博客"],
     status: "已启用",
     recommended: false,
     policyCode: "for public\ninitial:\n  ~freelog.TimeEvent(\"7d\") => trial\ntrial:\n  ~freelog.TransactionEvent(\"0.09\", \"self.account\") => auth",
@@ -216,9 +237,9 @@ export const adminAuthTemplates: AdminAuthTemplate[] = [
     id: "auth-tpl-003",
     code: "AT-0003",
     name: "付费订阅",
-    scope: "资源(8/20) · 展品(6/20)",
+    scope: "资源、展品 · 音乐 / 音效",
     applyTo: ["资源", "展品"],
-    resourceTypes: ["图片", "音乐", "音频"],
+    resourceTypes: ["图片", "音乐", "音效"],
     status: "已启用",
     recommended: false,
     policyCode: "for public\ninitial:\n  ~freelog.TransactionEvent(\"0.09\", \"self.account\") => auth",
@@ -230,9 +251,9 @@ export const adminAuthTemplates: AdminAuthTemplate[] = [
     id: "auth-tpl-004",
     code: "AT-0004",
     name: "永久解锁",
-    scope: "资源(10/20) · 展品(3/20)",
+    scope: "资源、展品 · 插画 / 照片",
     applyTo: ["资源", "展品"],
-    resourceTypes: ["图片", "插画"],
+    resourceTypes: ["插画", "照片"],
     status: "已停用",
     recommended: false,
     policyCode: "for public\ninitial:\n  ~freelog.TransactionEvent(\"1.99\", \"self.account\") => auth",
@@ -244,9 +265,9 @@ export const adminAuthTemplates: AdminAuthTemplate[] = [
     id: "auth-tpl-005",
     code: "AT-0005",
     name: "限时特价",
-    scope: "资源(4/20) · 展品(4/20)",
-    applyTo: ["资源", "展品"],
-    resourceTypes: ["音乐", "音频"],
+    scope: "展品合集 · 专栏 / 连载小说 / 连载漫画",
+    applyTo: ["展品合集"],
+    resourceTypes: ["专栏", "连载小说", "连载漫画"],
     status: "已启用",
     recommended: true,
     policyCode: "for public\ninitial:\n  ~freelog.TransactionEvent(\"0.09\", \"self.account\") => auth\n  ~freelog.TimeEvent(\"2023-07-31 00:00\") => finish\nauth[active]:\n  terminate\nfinish:",
@@ -258,9 +279,9 @@ export const adminAuthTemplates: AdminAuthTemplate[] = [
     id: "auth-tpl-006",
     code: "AT-0006",
     name: "限时免费",
-    scope: "资源(6/20)",
+    scope: "资源 · 长视频 / 短视频",
     applyTo: ["资源"],
-    resourceTypes: ["未来新增类型", "图片", "摄影"],
+    resourceTypes: ["长视频", "短视频"],
     status: "已停用",
     recommended: false,
     policyCode: "for public\ninitial:\n  ~freelog.TimeEvent(\"2026-10-01 00:00\") => finish\nfinish:\n  terminate",
@@ -268,6 +289,22 @@ export const adminAuthTemplates: AdminAuthTemplate[] = [
     dynamicTranslation: "免费截止至：${initial.TimeEvent.dateTime}",
     updatedAt: "2026-09-04 18:22"
   }
+];
+
+export const adminReviewPolicies: AdminReviewPolicy[] = [
+  { id: "RP-0001", name: "资源版本审核策略", object: "资源版本", status: "已启用", updatedAt: "2026-09-09 11:01:57", trigger: "发布前", contentType: "复合", description: "审核资源版本中的文本、图片及多媒体内容。" },
+  { id: "RP-0002", name: "资源信息审核策略", object: "资源信息", status: "已启用", updatedAt: "2026-09-08 09:02:57", trigger: "发布后", contentType: "文本", description: "审核资源标题、简介和标签等信息。" },
+  { id: "RP-0003", name: "用户信息审核策略", object: "用户信息", status: "未启用", updatedAt: "2026-09-07 16:42:00", trigger: "实时", contentType: "文本", description: "审核用户昵称、头像和个人简介。" },
+  { id: "RP-0004", name: "节点信息审核策略", object: "节点信息", status: "已启用", updatedAt: "2026-09-06 13:08:00", trigger: "发布前", contentType: "复合", description: "审核节点名称、介绍和服务信息。" },
+  { id: "RP-0005", name: "图片内容审核策略", object: "资源版本", status: "已启用", updatedAt: "2026-09-05 11:20:00", trigger: "实时", contentType: "图片", description: "识别图片中的风险内容并记录审核结果。" },
+  { id: "RP-0006", name: "评论内容审核策略", object: "资源信息", status: "未启用", updatedAt: "2026-09-04 18:22:00", trigger: "发布后", contentType: "文本", description: "审核用户提交的评论和反馈内容。" }
+];
+
+export const adminReviewRules: AdminReviewRule[] = [
+  { id: "RR-0001", policyId: "RP-0001", name: "违规词检测规则", type: "关键词", object: "资源版本", status: "已启用", updatedAt: "2026-09-09 11:03:20" },
+  { id: "RR-0002", policyId: "RP-0001", name: "图片风险内容识别", type: "模型识别", object: "资源版本", status: "已启用", updatedAt: "2026-09-08 09:10:05" },
+  { id: "RR-0003", policyId: "RP-0002", name: "联系方式识别规则", type: "正则表达式", object: "资源信息", status: "已启用", updatedAt: "2026-09-07 16:50:42" },
+  { id: "RR-0004", policyId: "RP-0003", name: "敏感话题识别规则", type: "关键词", object: "用户信息", status: "未启用", updatedAt: "2026-09-06 13:20:18" }
 ];
 
 export const adminGenericRows: Record<string, string[][]> = {

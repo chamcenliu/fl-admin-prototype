@@ -1,4 +1,4 @@
-import { ClipboardList, LayoutDashboard, ShieldCheck, Users, Database, Network, ReceiptText, Megaphone, Languages, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Users, Database, Network, ReceiptText, Megaphone, Languages, ShieldAlert } from "lucide-react";
 import type { PageNode } from "../types/page";
 
 // 页面树是原型项目的导航中枢：后续接真实服务时，只需要替换这一份数据源。
@@ -52,19 +52,11 @@ export const pageTree: PageNode[] = [
         children: [
           { id: "admin-campaigns", title: "活动管理", type: "page", status: "review", icon: Megaphone, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },
           { id: "admin-auth-templates", title: "授权策略模板管理", type: "page", status: "review", icon: Megaphone, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },
+          { id: "admin-review-policies", title: "内容审核策略管理", type: "page", status: "review", icon: ShieldAlert, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },
           { id: "admin-version-review", title: "资源版本审核", type: "page", status: "draft", icon: ShieldAlert, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },
           { id: "admin-translations", title: "翻译管理", type: "page", status: "draft", icon: Languages, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" }
         ]
       }
     ]
   },
-  {
-    id: "business",
-    title: "业务流程",
-    type: "folder",
-    icon: ClipboardList,
-    children: [
-      { id: "order-approval", title: "订单审批示例", type: "page", status: "draft", icon: ShieldCheck, sourceFile: "src/pages/examples/OrderApprovalPage.tsx" }
-    ]
-  }
 ];

@@ -6,64 +6,81 @@ import { usePageTree } from "./hooks/usePageTree";
 import { usePrdDrawer } from "./hooks/usePrdDrawer";
 import { GlobalLayout } from "./layout/GlobalLayout";
 import { IterationsModal } from "./pages/VersionsPage";
-import { OrderApprovalPage } from "./pages/examples/OrderApprovalPage";
 import { AdminPrototypePage } from "./pages/admin/AdminPrototypePage";
 import { EmptyState } from "./components/ui/EmptyState";
-import { findFirstPageId, findNode, findNodePath } from "./utils/pageTreeArchive";
-import { useEffect, useMemo, useState } from "react";
+import { filterPageTreeByPageIds, findFirstPageId } from "./utils/pageTreeArchive";
+import { useEffect, useState } from "react";
+
+const PROTOTYPE_FULLSCREEN_STORAGE_KEY = "prototype-as-prd:prototype-fullscreen";
+
+function readPrototypeFullscreenPreference(): boolean {
+  try {
+    return window.localStorage.getItem(PROTOTYPE_FULLSCREEN_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
 
 function renderPage(activePageId: string, openPrdNote: (noteId: string) => void, onNavigate: (pageId: string) => void) {
   if (activePageId.startsWith("admin-")) return <AdminPrototypePage initialPageId={activePageId} onNavigate={onNavigate} onOpenPrd={openPrdNote} />;
-  if (activePageId === "order-approval") return <OrderApprovalPage onOpenPrd={openPrdNote} />;
-
   return <EmptyState title="页面待生成" description="在左侧新建或选择页面后，可用同样的 PrdWrapper 模式继续扩展原型。" />;
 }
 
 export default function App() {
   const [collapsed, setCollapsed] = useState(false);
-  const [prototypeFullscreen, setPrototypeFullscreen] = useState(false);
+  const [prototypeFullscreen, setPrototypeFullscreen] = useState(readPrototypeFullscreenPreference);
   const [shareStatus, setShareStatus] = useState("");
   const [iterationsOpen, setIterationsOpen] = useState(false);
   const pageTreeState = usePageTree();
   const iterationsState = useIterations(pageTreeState.tree);
   const prdDrawer = usePrdDrawer();
-  const activeTree = useMemo(
-    () => iterationsState.activeIteration?.pageTreeSnapshot?.length ? iterationsState.activeIteration.pageTreeSnapshot : pageTreeState.tree,
-    [iterationsState.activeIteration, pageTreeState.tree]
-  );
-  const activePage = useMemo(() => findNode(activeTree, pageTreeState.activePageId), [activeTree, pageTreeState.activePageId]);
-  const activePath = useMemo(() => findNodePath(activeTree, pageTreeState.activePageId), [activeTree, pageTreeState.activePageId]);
-  const activeTreeDefaultPageId = useMemo(() => findFirstPageId(activeTree), [activeTree]);
-  const activeTreePageExists = (pageId: string) => findNode(activeTree, pageId)?.type === "page";
+  // 页面收纳是原型交付框架的管理树，始终使用当前项目 live 页面树，不受迭代切换影响。
+  const livePageTree = pageTreeState.tree;
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PROTOTYPE_FULLSCREEN_STORAGE_KEY, String(prototypeFullscreen));
+    } catch {
+      // 本地存储不可用时仍保留当前会话内的模式切换能力。
+    }
+  }, [prototypeFullscreen]);
 
   useEffect(() => {
     const readPageFromHash = () => {
       const pageId = window.location.hash.replace("#/", "");
-      if (pageId && activeTreePageExists(pageId)) {
+      if (pageId && pageTreeState.pageExists(pageId)) {
         pageTreeState.setActivePageId(pageId);
         return;
       }
 
-      if (pageId && activeTreeDefaultPageId) {
-        window.location.hash = `/${activeTreeDefaultPageId}`;
+      if (pageId && pageTreeState.defaultPageId) {
+        window.location.hash = `/${pageTreeState.defaultPageId}`;
       }
     };
 
     readPageFromHash();
     window.addEventListener("hashchange", readPageFromHash);
     return () => window.removeEventListener("hashchange", readPageFromHash);
-  }, [activeTree, activeTreeDefaultPageId, pageTreeState]);
-
-  useEffect(() => {
-    if (!activeTreeDefaultPageId || activeTreePageExists(pageTreeState.activePageId)) return;
-    window.location.hash = `/${activeTreeDefaultPageId}`;
-    pageTreeState.setActivePageId(activeTreeDefaultPageId);
-  }, [activeTree, activeTreeDefaultPageId, pageTreeState]);
+  }, [pageTreeState]);
 
   function selectPage(pageId: string) {
-    if (pageId === pageTreeState.activePageId || !activeTreePageExists(pageId)) return;
+    if (pageId === pageTreeState.activePageId || !pageTreeState.pageExists(pageId)) return;
     window.location.hash = `/${pageId}`;
     pageTreeState.setActivePageId(pageId);
+  }
+
+  function switchIteration(iterationId: string) {
+    const targetIteration = iterationsState.iterations.find(item => item.id === iterationId);
+    const targetTree = targetIteration?.pageTreeSnapshot?.length
+      ? targetIteration.pageTreeSnapshot
+      : filterPageTreeByPageIds(livePageTree, targetIteration?.pageIds || []);
+    const nextPageId = findFirstPageId(targetTree);
+
+    iterationsState.setActiveIterationId(iterationId);
+    if (nextPageId && pageTreeState.pageExists(nextPageId)) {
+      window.location.hash = `/${nextPageId}`;
+      pageTreeState.setActivePageId(nextPageId);
+    }
   }
 
   async function shareCurrentPage() {
@@ -82,9 +99,9 @@ export default function App() {
   return (
     <>
       <GlobalLayout
-        tree={activeTree}
-        activeTitle={activePage?.title}
-        activePath={activePath}
+        tree={livePageTree}
+        activeTitle={pageTreeState.activePage?.title}
+        activePath={pageTreeState.activePath}
         activePageId={pageTreeState.activePageId}
         collapsed={collapsed}
         prototypeFullscreen={prototypeFullscreen}
@@ -107,14 +124,14 @@ export default function App() {
       <PrdDrawer note={prdDrawer.activeNote} onClose={prdDrawer.closePrdNote} />
       {iterationsOpen ? (
         <IterationsModal
-          pageTree={pageTreeState.tree}
+          pageTree={livePageTree}
           iterations={iterationsState.iterations}
           activeIterationId={iterationsState.activeIterationId}
           onClose={() => setIterationsOpen(false)}
           onCreateIteration={iterationsState.createIteration}
           onUpdateIteration={iterationsState.updateIteration}
           onDeleteIteration={iterationsState.deleteIteration}
-          onSwitchIteration={iterationsState.setActiveIterationId}
+          onSwitchIteration={switchIteration}
         />
       ) : null}
     </>

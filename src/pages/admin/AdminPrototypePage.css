@@ -48,7 +48,6 @@
   display: flex;
   min-height: 760px;
   flex-direction: column;
-  border-right: 1px solid var(--admin-line);
   background: #fff;
 }
 
@@ -154,7 +153,7 @@
   display: flex;
   min-height: 68px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   border-bottom: 1px solid var(--admin-line);
   background: rgba(255, 255, 255, 0.94);
   padding: 0 24px;
@@ -616,6 +615,114 @@
   background: #fff;
 }
 
+.fl-admin-review-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--admin-line);
+  background: #fff;
+}
+
+.fl-admin-review-table th:nth-child(2),
+.fl-admin-review-table td:nth-child(2) { width: 112px; }
+
+.fl-admin-review-table th:nth-child(4),
+.fl-admin-review-table td:nth-child(4) { width: 112px; }
+
+.fl-admin-review-table th:nth-child(6),
+.fl-admin-review-table td:nth-child(6) { width: 176px; color: var(--admin-muted); }
+
+.fl-admin-review-object {
+  display: block;
+  margin-top: 4px;
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
+.fl-admin-review-policy-modal {
+  width: min(560px, 100%);
+  max-height: min(88vh, 760px);
+  overflow: auto;
+}
+
+.fl-admin-review-enabled {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 16px;
+  color: #35414c;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.fl-admin-rules-panel {
+  margin-top: 18px;
+}
+
+.fl-admin-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--admin-line);
+  padding: 16px;
+}
+
+.fl-admin-section-heading h3 {
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: 16px;
+}
+
+.fl-admin-section-heading p {
+  margin: 5px 0 0;
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
+.fl-admin-review-rules th:first-child,
+.fl-admin-review-rules td:first-child { width: 112px; }
+
+.fl-admin-review-rules th:last-child,
+.fl-admin-review-rules td:last-child { width: 176px; color: var(--admin-muted); }
+
+.fl-admin-back-link {
+  display: block;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--admin-blue);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.fl-admin-page-subtitle {
+  margin: 6px 0 0;
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+
+.fl-admin-rule-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--admin-line);
+  padding: 14px 16px;
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+
+.fl-admin-rule-context strong { color: var(--admin-ink); }
+.fl-admin-empty-cell { padding: 36px 16px !important; color: var(--admin-muted); text-align: center; }
+
+.fl-admin-field-hint {
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .fl-admin-status-filter {
   display: inline-flex;
   align-items: center;
@@ -683,7 +790,68 @@
 .fl-admin-auth-scope {
   display: grid;
   gap: 5px;
-  min-width: 180px;
+  min-width: 250px;
+  max-width: 440px;
+  line-height: 1.6;
+}
+
+.fl-admin-auth-scope strong {
+  display: block;
+  color: #35414c;
+  font-size: 13px;
+}
+
+.fl-admin-auth-scope-details {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--admin-muted);
+  font-size: 12px;
+  max-height: 22px;
+}
+
+.fl-admin-auth-scope-detail-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.fl-admin-auth-scope-detail-row.expanded {
+  align-items: flex-start;
+}
+
+.fl-admin-auth-scope-details.expanded {
+  max-height: 300px;
+}
+
+.fl-admin-auth-scope-details ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fl-admin-auth-scope-details li {
+  padding-left: 2px;
+}
+
+.fl-admin-auth-scope-details.expanded ul {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.fl-admin-scope-toggle {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--admin-blue);
+  font-size: 12px;
+  cursor: pointer;
 }
 
 .fl-admin-auth-preview {
@@ -740,7 +908,7 @@
 }
 
 .fl-admin-auth-form-page {
-  grid-template-columns: minmax(220px, 0.72fr) minmax(260px, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px 20px;
   padding: 6px 24px 22px;
 }
@@ -749,8 +917,137 @@
   grid-column: 1 / -1;
 }
 
+.fl-admin-auth-form-page > .fl-admin-dialog-field {
+  align-content: start;
+}
+
+.fl-admin-auth-form-page > .fl-admin-dialog-field > input,
+.fl-admin-auth-form-page > .fl-admin-dialog-field > select {
+  box-sizing: border-box;
+  height: 40px;
+}
+
 .fl-admin-auth-form-page textarea {
   resize: vertical;
+}
+
+.fl-admin-code-editor-shell {
+  display: grid;
+  min-height: 228px;
+  grid-template-columns: 40px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid #cfd8df;
+  border-radius: 6px;
+  background: #f7f9fb;
+}
+
+.fl-admin-code-line-numbers {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  overflow: hidden;
+  border-right: 1px solid #dce3e8;
+  background: #eef2f5;
+  padding: 14px 10px 14px 0;
+  color: #8a98a3;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  user-select: none;
+}
+
+.fl-admin-code-field textarea.fl-admin-code-editor {
+  width: 100%;
+  min-height: 228px;
+  border: 0;
+  border-radius: 0;
+  background: #f7f9fb;
+  color: #26333d;
+  padding: 14px 16px;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  caret-color: #566a0b;
+  resize: vertical;
+}
+
+.fl-admin-code-field textarea.fl-admin-code-editor:focus {
+  outline: none;
+}
+
+.fl-admin-code-editor-shell:focus-within {
+  border-color: #91ad20;
+  box-shadow: 0 0 0 2px rgba(145, 173, 32, 0.18);
+}
+
+.fl-admin-translation-editor {
+  min-height: 228px;
+  height: 228px;
+}
+
+.fl-admin-dynamic-translation {
+  grid-column: 1 / -1;
+  gap: 10px;
+}
+
+.fl-admin-dynamic-list {
+  display: grid;
+  gap: 10px;
+}
+
+.fl-admin-dynamic-row {
+  display: grid;
+  grid-template-columns: 28px minmax(160px, 0.75fr) minmax(220px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+  background: #fafbfc;
+  padding: 10px;
+}
+
+.fl-admin-dynamic-index {
+  align-self: center;
+  color: var(--admin-muted);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.fl-admin-dynamic-row label {
+  display: grid;
+  gap: 6px;
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fl-admin-dynamic-row input {
+  min-height: 38px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: 5px;
+  background: #fff;
+  padding: 7px 10px;
+}
+
+.fl-admin-dynamic-delete {
+  min-height: 38px;
+  color: var(--admin-danger);
+}
+
+.fl-admin-dynamic-add {
+  width: fit-content;
+}
+
+@media (max-width: 780px) {
+  .fl-admin-dynamic-row {
+    grid-template-columns: 1fr;
+  }
+
+  .fl-admin-dynamic-index {
+    justify-self: start;
+  }
 }
 
 .fl-admin-edit-form-section {
@@ -829,7 +1126,59 @@
 
 .fl-admin-auth-fieldset.resource-types {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fl-admin-work-type-legend {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.fl-admin-work-type-group {
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid #edf0f2;
+  padding-bottom: 10px;
+}
+
+.fl-admin-work-type-group:last-of-type {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.fl-admin-work-type-group > strong {
+  color: #46545f;
+  font-size: 13px;
+}
+
+.fl-admin-work-type-group > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px 18px;
+}
+
+.fl-admin-select-all {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #35414c;
+  font-weight: 800;
+}
+
+.fl-admin-select-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fl-admin-empty-hint {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 13px;
 }
 
 .fl-admin-dialog-actions {
@@ -880,5 +1229,14 @@
 
   .fl-admin-sort {
     margin-left: 0;
+  }
+
+  .fl-admin-auth-form-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fl-admin-code-field,
+  .fl-admin-translation-field {
+    grid-column: 1 / -1;
   }
 }

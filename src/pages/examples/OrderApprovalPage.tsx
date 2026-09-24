@@ -16,7 +16,7 @@ export function OrderApprovalPage({ onOpenPrd }: { onOpenPrd: (noteId: string) =
         <div>
           <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand-dark">示例业务页面</p>
           <h2 className="text-2xl font-bold">订单审批</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-muted">这个页面演示业务 UI 如何通过 PrdWrapper 绑定需求说明。真实项目中，页面只接收 mockData 或接口数据。</p>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-muted">这个页面演示业务 UI 如何接收 mockData 或接口数据，并在原型交付框架中按真实页面状态呈现。</p>
         </div>
         <Button icon={<RotateCcw className="h-4 w-4" />}>创建新迭代</Button>
       </div>

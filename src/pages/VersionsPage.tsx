@@ -33,9 +33,9 @@ function IterationDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/25 px-4">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/25 px-6 py-6">
       <form
-        className="w-full max-w-md border border-line bg-white p-5 shadow-2xl"
+        className="grid max-h-[88vh] w-full max-w-4xl grid-rows-[auto_auto_minmax(0,1fr)_auto] border border-line bg-white p-5 shadow-2xl"
         style={{ borderRadius: 8 }}
         onSubmit={event => {
           event.preventDefault();
@@ -60,9 +60,9 @@ function IterationDialog({
           />
         </label>
 
-        <fieldset className="mt-4 grid gap-2">
+        <fieldset className="mt-4 grid min-h-0 gap-2">
           <legend className="mb-2 text-sm font-bold">绑定页面</legend>
-          <div className="grid max-h-48 gap-2 overflow-y-auto border border-line p-3" style={{ borderRadius: 8 }}>
+          <div className="grid max-h-[56vh] min-h-64 content-start gap-2 overflow-y-auto border border-line p-3" style={{ borderRadius: 8 }}>
             {pageTree.map(node => (
               <PageBindingNode key={node.id} node={node} selectedPageIds={selectedPageIds} onTogglePage={togglePage} />
             ))}
@@ -92,7 +92,7 @@ function PageBindingNode({
   if (node.type === "folder") {
     return (
       <div className="grid gap-2">
-        <div className="text-xs font-bold text-muted" style={{ paddingLeft: depth * 16 }}>{node.title}</div>
+        <div className="h-7 truncate text-xs font-bold leading-7 text-muted" style={{ paddingLeft: depth * 18 }} title={node.title}>{node.title}</div>
         {node.children?.map(child => (
           <PageBindingNode key={child.id} node={child} selectedPageIds={selectedPageIds} depth={depth + 1} onTogglePage={onTogglePage} />
         ))}
@@ -101,14 +101,22 @@ function PageBindingNode({
   }
 
   return (
-    <label className="flex items-center gap-2 text-sm" style={{ paddingLeft: depth * 16 }}>
+    <label
+      className="grid min-h-9 grid-cols-[auto_max-content_minmax(0,1fr)] items-center gap-3 text-sm hover:bg-slate-50"
+      style={{ paddingLeft: depth * 18, borderRadius: 8 }}
+      title={node.sourceFile ? `${node.title} · ${node.sourceFile}` : node.title}
+    >
       <input
         type="checkbox"
         checked={selectedPageIds.has(node.id)}
         onChange={event => onTogglePage(node.id, event.target.checked)}
       />
-      <span>{node.title}</span>
-      {node.sourceFile ? <code className="ml-auto truncate rounded bg-slate-100 px-2 py-0.5 text-xs text-muted">{node.sourceFile}</code> : null}
+      <span className="whitespace-nowrap font-semibold text-ink">{node.title}</span>
+      {node.sourceFile ? (
+        <code className="min-w-0 truncate rounded bg-slate-100 px-2 py-1 text-xs text-muted" title={node.sourceFile}>
+          {node.sourceFile}
+        </code>
+      ) : null}
     </label>
   );
 }

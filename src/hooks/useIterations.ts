@@ -13,10 +13,10 @@ function createVersionLabel(index: number) {
 }
 
 function ensureIterationSnapshots(iterations: IterationVersion[], pageTree: PageNode[]) {
-  return iterations.map(item => ({
-    ...item,
-    pageTreeSnapshot: item.pageTreeSnapshot || createPageTreeSnapshot(pageTree, item.pageIds)
-  }));
+  return iterations.map(item => {
+    const pageIds = item.id === "it-20260914-prd-shell" ? [...new Set([...item.pageIds, "admin-review-policies"])] : item.pageIds;
+    return { ...item, pageIds, pageTreeSnapshot: createPageTreeSnapshot(pageTree, pageIds) };
+  });
 }
 
 function createIterationRecord(title: string, pageIds: string[], pageTree: PageNode[], index: number): IterationVersion {
@@ -46,7 +46,8 @@ export function useIterations(pageTree: PageNode[]) {
   }, [activeIterationId, iterations]);
 
   useEffect(() => {
-    if (iterations.every(item => item.pageTreeSnapshot)) return;
+    const needsCurrentIterationMigration = iterations.some(item => item.id === "it-20260914-prd-shell" && !item.pageIds.includes("admin-review-policies"));
+    if (iterations.every(item => item.pageTreeSnapshot) && !needsCurrentIterationMigration) return;
     setIterations(current => ensureIterationSnapshots(current, pageTree));
   }, [iterations, pageTree, setIterations]);
 

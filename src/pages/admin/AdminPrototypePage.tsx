@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Database,
   FileText,
@@ -18,13 +18,19 @@ import {
   adminGenericRows,
   adminNavGroups,
   adminRecentTasks,
-  adminResourceTypeOptions,
+  adminReviewPolicies,
+  adminReviewRules,
   adminUsers,
   findAdminPage,
   type AdminAuthTemplate,
+  type AdminReviewPolicy,
+  type AdminReviewRule,
   type AdminUser
 } from "../../mockData/adminPrototype";
 import { PrdWrapper } from "../../components/prd/PrdWrapper";
+import { TreeMultiSelect, expandTreeSelection, type TreeMultiSelectNode } from "../../components/admin/TreeMultiSelect";
+import { EditPageActions } from "../../components/admin/EditPageActions";
+import { FormErrorBanner } from "../../components/admin/FormErrorBanner";
 import "./AdminPrototypePage.css";
 
 type AdminDialog =
@@ -44,6 +50,45 @@ type AuthTemplateDialog =
 
 const tagOptions = ["小说", "测试", "节点商", "资源作者", "消费者"];
 const freezeReasons = ["抄袭、侵权", "垃圾广告", "色情、暴力", "不实信息", "欺诈", "恶意操作"];
+
+const resourceTypeTree: TreeMultiSelectNode[] = [
+  { id: "图片", label: "图片", children: [{ id: "插画", label: "插画" }, { id: "照片", label: "照片" }] },
+  { id: "音频", label: "音频", children: [{ id: "音乐", label: "音乐" }, { id: "音效", label: "音效" }, { id: "音乐专辑", label: "音乐专辑" }, { id: "连载博客", label: "连载博客" }] },
+  { id: "视频", label: "视频", children: [{ id: "长视频", label: "长视频" }, { id: "短视频", label: "短视频" }] },
+  { id: "阅读", label: "阅读", children: ["文章", "条漫", "页漫", "日漫", "专栏", "连载小说", "连载漫画"].map(id => ({ id, label: id })) },
+  { id: "主题", label: "主题" },
+  { id: "插件", label: "插件" },
+  { id: "游戏", label: "游戏" }
+];
+
+type TargetType = "资源" | "资源合集" | "展品" | "展品合集";
+const targetTypeOptions: TargetType[] = ["资源", "资源合集", "展品", "展品合集"];
+const baseWorkTypeGroups: TreeMultiSelectNode[] = [
+  { id: "图片", label: "图片", children: [{ id: "插画", label: "插画" }, { id: "照片", label: "照片" }] },
+  { id: "音频", label: "音频", children: [{ id: "音乐", label: "音乐" }, { id: "音效", label: "音效" }] },
+  { id: "视频", label: "视频", children: [{ id: "长视频", label: "长视频" }, { id: "短视频", label: "短视频" }] },
+  { id: "阅读", label: "阅读", children: ["文章", "条漫", "页漫", "日漫"].map(id => ({ id, label: id })) },
+  { id: "主题", label: "主题" },
+  { id: "插件", label: "插件" },
+  { id: "游戏", label: "游戏" }
+];
+const collectionWorkTypeGroups: TreeMultiSelectNode[] = [
+  { id: "音频", label: "音频", children: [{ id: "音乐专辑", label: "音乐专辑" }, { id: "连载博客", label: "连载博客" }] },
+  { id: "阅读", label: "阅读", children: ["专栏", "连载小说", "连载漫画"].map(id => ({ id, label: id })) }
+];
+function workTypeGroupsFor(targets: Set<string>) {
+  const groups = new Map<string, TreeMultiSelectNode>();
+  targetTypeOptions.filter(target => targets.has(target)).forEach(target => {
+    (target.endsWith("合集") ? collectionWorkTypeGroups : baseWorkTypeGroups).forEach(group => {
+      const existing = groups.get(group.id);
+      if (!existing) groups.set(group.id, { ...group, children: group.children ? [...group.children] : undefined });
+      else groups.set(group.id, { ...existing, children: [...(existing.children ?? []), ...(group.children ?? [])].filter((child, index, list) => list.findIndex(item => item.id === child.id) === index) });
+    });
+  });
+  return [...groups.values()];
+}
+function workTypeIds(groups: TreeMultiSelectNode[]) { return groups.flatMap(group => [group.id, ...(group.children?.map(child => child.id) ?? [])]); }
+function getScopeLabel(targets: TargetType[], types: string[]) { return targets.length ? `${targets.join("、")} · ${types.length ? types.join(" / ") : "未选择作品类型"}` : "未选择标的物类型"; }
 
 const adminNavIconMap: Record<string, LucideIcon> = {
   概览: LayoutDashboard,
@@ -129,6 +174,77 @@ function AdminDashboard({ onOpenPrd }: { onOpenPrd: (noteId: string) => void }) 
   );
 }
 
+function AdminReviewPolicyDialog({ policy, onClose, onSave }: { policy: AdminReviewPolicy; onClose: () => void; onSave: (policy: AdminReviewPolicy) => void }) {
+  const [draft, setDraft] = useState(policy);
+  const update = <K extends keyof AdminReviewPolicy>(key: K, value: AdminReviewPolicy[K]) => setDraft(current => ({ ...current, [key]: value }));
+  return (
+    <div className="fl-admin-modal-backdrop">
+      <section className="fl-admin-modal fl-admin-review-policy-modal" role="dialog" aria-modal="true">
+        <h3>{policy.name ? "编辑审核策略" : "新建审核策略"}</h3>
+        <label className="fl-admin-dialog-field">名称<input value={draft.name} onChange={event => update("name", event.target.value)} placeholder="请输入审核策略名称" /></label>
+        <label className="fl-admin-dialog-field">触发场景<select value={draft.trigger} onChange={event => update("trigger", event.target.value as AdminReviewPolicy["trigger"])}><option>发布前</option><option>发布后</option><option>实时</option></select></label>
+        <label className="fl-admin-dialog-field">作用对象<select value={draft.object} onChange={event => update("object", event.target.value as AdminReviewPolicy["object"])}><option>资源版本</option><option>资源信息</option><option>用户信息</option><option>节点信息</option></select></label>
+        <label className="fl-admin-dialog-field">内容类型<select value={draft.contentType} onChange={event => update("contentType", event.target.value as AdminReviewPolicy["contentType"])}><option>复合</option><option>文本</option><option>图片</option><option>音频</option><option>视频</option></select></label>
+        <label className="fl-admin-dialog-field">描述<span className="fl-admin-field-hint">（选填）</span><textarea value={draft.description} onChange={event => update("description", event.target.value)} rows={4} /></label>
+        <label className="fl-admin-review-enabled"><input type="checkbox" checked={draft.status === "已启用"} onChange={event => update("status", event.target.checked ? "已启用" : "未启用")} /> 启用规则</label>
+        <footer><button className="fl-admin-secondary-button" type="button" onClick={onClose}>取消</button><button className="fl-admin-button" type="button" onClick={() => onSave({ ...draft, name: draft.name || "未命名审核策略", updatedAt: "2026-09-21 16:00:00" })}>保存</button></footer>
+      </section>
+    </div>
+  );
+}
+
+function AdminReviewRuleDialog({ rule, onClose, onSave }: { rule: AdminReviewRule; onClose: () => void; onSave: (rule: AdminReviewRule) => void }) {
+  const [draft, setDraft] = useState(rule);
+  const update = <K extends keyof AdminReviewRule>(key: K, value: AdminReviewRule[K]) => setDraft(current => ({ ...current, [key]: value }));
+  return <div className="fl-admin-modal-backdrop"><section className="fl-admin-modal fl-admin-review-policy-modal" role="dialog" aria-modal="true"><h3>{rule.name ? "编辑管理规则" : "新建管理规则"}</h3><label className="fl-admin-dialog-field">规则名称<input value={draft.name} onChange={event => update("name", event.target.value)} placeholder="请输入规则名称" /></label><label className="fl-admin-dialog-field">规则类型<select value={draft.type} onChange={event => update("type", event.target.value as AdminReviewRule["type"])}><option>关键词</option><option>正则表达式</option><option>模型识别</option></select></label><label className="fl-admin-dialog-field">适用对象<select value={draft.object} onChange={event => update("object", event.target.value as AdminReviewRule["object"])}><option>资源版本</option><option>资源信息</option><option>用户信息</option><option>节点信息</option></select></label><label className="fl-admin-review-enabled"><input type="checkbox" checked={draft.status === "已启用"} onChange={event => update("status", event.target.checked ? "已启用" : "未启用")} /> 启用规则</label><footer><button className="fl-admin-secondary-button" type="button" onClick={onClose}>取消</button><button className="fl-admin-button" type="button" onClick={() => onSave({ ...draft, name: draft.name || "未命名规则", updatedAt: "2026-09-23 16:00:00" })}>保存</button></footer></section></div>;
+}
+
+function AdminReviewRulesPage({ policy, rules, onBack, onSaveRule }: { policy: AdminReviewPolicy; rules: AdminReviewRule[]; onBack: () => void; onSaveRule: (rule: AdminReviewRule) => void }) {
+  const [ruleDialog, setRuleDialog] = useState<AdminReviewRule | null>(null);
+  const blankRule: AdminReviewRule = { id: `RR-${String(rules.length + 1).padStart(4, "0")}`, policyId: policy.id, name: "", type: "关键词", object: policy.object, status: "已启用", updatedAt: "" };
+  return <>
+    <div className="fl-admin-page-heading"><div><button className="fl-admin-back-link" type="button" onClick={onBack}>‹ 返回策略列表</button><span className="fl-admin-eyebrow">内容审核策略 · 管理规则</span><h2>{policy.name}</h2><p className="fl-admin-page-subtitle">管理此内容审核策略包含的规则。</p></div><button className="fl-admin-button" type="button" onClick={() => setRuleDialog(blankRule)}>+ 新建规则</button></div>
+    <section className="fl-admin-panel">
+      <div className="fl-admin-rule-context"><strong>策略信息</strong><span>{policy.id} · {policy.object} · {policy.trigger} · {policy.contentType}</span></div>
+      <div className="fl-admin-table-wrap"><table className="fl-admin-table fl-admin-review-rules"><thead><tr><th>序号</th><th>规则名称</th><th>规则类型</th><th>适用对象</th><th>状态</th><th>操作</th><th>最近更新</th></tr></thead><tbody>{rules.length ? rules.map((rule, index) => <tr key={rule.id}><td>{index + 1}</td><td>{rule.name || "未命名规则"}</td><td>{rule.type}</td><td>{rule.object}</td><td><span className={`fl-admin-status ${rule.status === "已启用" ? "success" : "danger"}`}>{rule.status}</span></td><td><button className="fl-admin-action-button" type="button" onClick={() => onSaveRule({ ...rule, status: rule.status === "已启用" ? "未启用" : "已启用" })}>{rule.status === "已启用" ? "停用" : "启用"}</button><button className="fl-admin-action-button" type="button" onClick={() => setRuleDialog(rule)}>编辑规则</button></td><td>{rule.updatedAt}</td></tr>) : <tr><td colSpan={7} className="fl-admin-empty-cell">暂无规则，请先新建规则</td></tr>}</tbody></table></div>
+    </section>
+    {ruleDialog ? <AdminReviewRuleDialog rule={ruleDialog} onClose={() => setRuleDialog(null)} onSave={rule => { onSaveRule(rule); setRuleDialog(null); }} /> : null}
+  </>;
+}
+
+function AdminReviewPoliciesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => void }) {
+  const [policies, setPolicies] = useState<AdminReviewPolicy[]>(() => adminReviewPolicies.map(item => ({ ...item })));
+  const [rules, setRules] = useState<AdminReviewRule[]>(() => adminReviewRules.map(item => ({ ...item })));
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("所有");
+  const [object, setObject] = useState("所有");
+  const [dialog, setDialog] = useState<AdminReviewPolicy | null>(null);
+  const [rulesPolicyId, setRulesPolicyId] = useState<string | null>(null);
+  const filtered = useMemo(() => policies.filter(policy => {
+    const matchesQuery = !query || `${policy.id} ${policy.name}`.toLowerCase().includes(query.toLowerCase());
+    return matchesQuery && (status === "所有" || policy.status === status) && (object === "所有" || policy.object === object);
+  }), [object, policies, query, status]);
+  const allSelected = filtered.length > 0 && filtered.every(policy => selectedIds.has(policy.id));
+  function toggleStatus(ids: string[], nextStatus: AdminReviewPolicy["status"]) { setPolicies(current => current.map(policy => ids.includes(policy.id) ? { ...policy, status: nextStatus } : policy)); setSelectedIds(new Set()); }
+  function savePolicy(policy: AdminReviewPolicy) { setPolicies(current => current.some(item => item.id === policy.id) ? current.map(item => item.id === policy.id ? policy : item) : [policy, ...current]); setDialog(null); }
+  function saveRule(rule: AdminReviewRule) { setRules(current => current.some(item => item.id === rule.id) ? current.map(item => item.id === rule.id ? rule : item) : [rule, ...current]); setRuleDialog(null); }
+  const blankPolicy: AdminReviewPolicy = { id: `RP-${String(policies.length + 1).padStart(4, "0")}`, name: "", object: "资源版本", status: "已启用", updatedAt: "", trigger: "发布前", contentType: "复合", description: "" };
+  const rulesPolicy = rulesPolicyId ? policies.find(policy => policy.id === rulesPolicyId) : null;
+  if (rulesPolicy) return <AdminReviewRulesPage policy={rulesPolicy} rules={rules.filter(rule => rule.policyId === rulesPolicy.id)} onBack={() => setRulesPolicyId(null)} onSaveRule={saveRule} />;
+  return <>
+    <div className="fl-admin-page-heading"><div><span className="fl-admin-eyebrow">安全与合规</span><h2>内容审核策略管理</h2></div><button className="fl-admin-button" type="button" onClick={() => setDialog(blankPolicy)}>+ 新建审核策略</button></div>
+    <section className="fl-admin-panel">
+      <PrdWrapper noteId="prd-fl-admin-review-policy-filter" onOpen={onOpenPrd}>
+        {selectedIds.size ? <div className="fl-admin-selection-bar"><strong>已选 {selectedIds.size} 条</strong><button className="fl-admin-button" type="button" onClick={() => toggleStatus([...selectedIds], "未启用")}>停用</button><button className="fl-admin-secondary-button" type="button" onClick={() => toggleStatus([...selectedIds], "已启用")}>启用</button><button className="fl-admin-secondary-button" type="button" onClick={() => setSelectedIds(new Set())}>取消选择</button></div> : <div className="fl-admin-review-filter"><label className="fl-admin-search-box compact"><span>⌕</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索审核策略" /></label><label className="fl-admin-status-filter">状态<select value={status} onChange={event => setStatus(event.target.value)}><option>所有</option><option>已启用</option><option>未启用</option></select></label><label className="fl-admin-status-filter">作用对象<select value={object} onChange={event => setObject(event.target.value)}><option>所有</option><option>资源版本</option><option>资源信息</option><option>用户信息</option><option>节点信息</option></select></label><button className="fl-admin-secondary-button" type="button" onClick={() => { setQuery(""); setStatus("所有"); setObject("所有"); }}>重置</button></div>}
+      </PrdWrapper>
+      <PrdWrapper noteId="prd-fl-admin-review-policy-table" onOpen={onOpenPrd}><div className="fl-admin-table-wrap"><table className="fl-admin-table fl-admin-review-table"><thead><tr><th><input type="checkbox" checked={allSelected} onChange={event => setSelectedIds(event.target.checked ? new Set(filtered.map(policy => policy.id)) : new Set())} aria-label="全选审核策略" /></th><th>ID</th><th>审核策略</th><th>状态</th><th>操作</th><th>最近更新</th></tr></thead><tbody>{filtered.map(policy => <tr key={policy.id}><td><input type="checkbox" checked={selectedIds.has(policy.id)} onChange={event => setSelectedIds(current => { const next = new Set(current); event.target.checked ? next.add(policy.id) : next.delete(policy.id); return next; })} aria-label={`选择 ${policy.name}`} /></td><td>{policy.id}</td><td><button className="fl-admin-record-link" type="button" onClick={() => setDialog(policy)}>{policy.name}</button><span className="fl-admin-review-object">{policy.object} · {policy.contentType} · {policy.trigger}</span></td><td><span className={`fl-admin-status ${policy.status === "已启用" ? "success" : "danger"}`}>{policy.status}</span></td><td><button className="fl-admin-action-button" type="button" onClick={() => toggleStatus([policy.id], policy.status === "已启用" ? "未启用" : "已启用")}>{policy.status === "已启用" ? "停用" : "启用"}</button><button className="fl-admin-action-button" type="button" onClick={() => setDialog(policy)}>编辑策略</button><button className="fl-admin-action-button" type="button" onClick={() => setRulesPolicyId(policy.id)}>管理规则</button></td><td>{policy.updatedAt}</td></tr>)}</tbody></table></div></PrdWrapper>
+      <footer className="fl-admin-pagination"><span>1- {filtered.length} of {filtered.length}</span><button className="fl-admin-secondary-button" type="button">‹</button><strong>1 / 1</strong><button className="fl-admin-secondary-button" type="button">›</button></footer>
+    </section>
+    {dialog ? <AdminReviewPolicyDialog policy={dialog} onClose={() => setDialog(null)} onSave={savePolicy} /> : null}
+  </>;
+}
+
 function AdminGenericList({ pageId }: { pageId: string }) {
   const meta = findAdminPage(pageId);
   const [query, setQuery] = useState("");
@@ -197,6 +313,20 @@ function toggleSetValue(current: Set<string>, value: string) {
   return next;
 }
 
+type DynamicTranslationRow = { id: string; event: string; translation: string };
+
+function parseDynamicTranslations(value: string): DynamicTranslationRow[] {
+  const rows = value.split("\n").map(item => item.trim()).filter(Boolean).map((item, index) => {
+    const separatorIndex = item.indexOf("：") >= 0 ? item.indexOf("：") : item.indexOf(":");
+    return {
+      id: `dynamic-${index}`,
+      event: separatorIndex >= 0 ? item.slice(0, separatorIndex).trim() : item,
+      translation: separatorIndex >= 0 ? item.slice(separatorIndex + 1).trim() : ""
+    };
+  });
+  return rows.length ? rows : [{ id: "dynamic-0", event: "", translation: "" }];
+}
+
 function AuthTemplateName({ template }: { template: AdminAuthTemplate }) {
   return (
     <div className="fl-admin-auth-name">
@@ -205,17 +335,42 @@ function AuthTemplateName({ template }: { template: AdminAuthTemplate }) {
   );
 }
 
+function AuthTemplateScope({ template }: { template: AdminAuthTemplate }) {
+  const [expanded, setExpanded] = useState(false);
+  const [collapsible, setCollapsible] = useState(false);
+  const detailsRef = useRef<HTMLDivElement>(null);
+  const summaries = template.applyTo.map(target => {
+    const groups = workTypeGroupsFor(new Set([target]));
+    const availableTypes = groups.flatMap(group => group.children?.length ? group.children.map(child => child.id) : [group.id]);
+    return { target, types: availableTypes.filter(type => template.resourceTypes.includes(type)) };
+  });
+  const detailsText = summaries.map(item => `${item.target}：${item.types.join("、") || "未配置"}`);
+
+  useEffect(() => {
+    const element = detailsRef.current;
+    if (element) setCollapsible(element.scrollHeight > element.clientHeight + 1);
+  }, [detailsText.join("；")]);
+
+  return <div className="fl-admin-auth-scope">
+    <strong>{summaries.map(item => `${item.target}（${item.types.length}）`).join(" · ")}</strong>
+    <div className={`fl-admin-auth-scope-detail-row ${expanded ? "expanded" : ""}`}>
+      <div ref={detailsRef} className={`fl-admin-auth-scope-details ${expanded ? "expanded" : ""}`}><ul>{detailsText.map(item => <li key={item}>{item}</li>)}</ul></div>
+      {collapsible ? <button className="fl-admin-scope-toggle" type="button" onClick={() => setExpanded(current => !current)}>{expanded ? "收起" : "展开"}</button> : null}
+    </div>
+  </div>;
+}
+
 function createBlankAuthTemplate(index: number): AdminAuthTemplate {
   return {
     id: `auth-tpl-${Date.now()}`,
     code: `AT-${String(index + 1).padStart(4, "0")}`,
     name: "",
-    scope: "资源(0/20)",
-    applyTo: ["资源"],
-    resourceTypes: ["图片"],
+    scope: "",
+    applyTo: [],
+    resourceTypes: [],
     status: "已启用",
     recommended: false,
-    policyCode: "for public\ninitial:\n  auth",
+    policyCode: "",
     policyTranslation: "",
     dynamicTranslation: "",
     updatedAt: "2026-09-15 12:00"
@@ -237,10 +392,10 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
   const [page, setPage] = useState(1);
 
   const filteredTemplates = useMemo(() => {
-    const activeScopes = [...scopeFilter];
+    const activeScopes = [...expandTreeSelection(resourceTypeTree, scopeFilter)];
     return templates.filter(template => {
       const matchesQuery = !query || [template.code, template.name, template.policyTranslation, template.dynamicTranslation].some(value => value.toLowerCase().includes(query.toLowerCase()));
-      const matchesApplyTo = applyToFilter === "全部对象" || template.applyTo.includes(applyToFilter as "资源" | "展品");
+      const matchesApplyTo = applyToFilter === "全部对象" || template.applyTo.includes(applyToFilter as TargetType);
       const matchesStatus = status === "全部状态" || template.status === status;
       const matchesRecommend = recommendFilter === "全部推荐状态" || (recommendFilter === "已推荐" ? template.recommended : !template.recommended);
       const matchesScope = !activeScopes.length || activeScopes.some(item => template.resourceTypes.includes(item));
@@ -281,8 +436,8 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
     setDialog(null);
   }
 
-  function applyScope(templateIds: string[], resourceTypes: string[], applyTo: ("资源" | "展品")[]) {
-    setTemplates(current => current.map(template => templateIds.includes(template.id) ? { ...template, resourceTypes, applyTo, scope: `${applyTo.includes("资源") ? `资源(${Math.max(1, resourceTypes.length * 2)}/20)` : ""}${applyTo.length === 2 ? " · " : ""}${applyTo.includes("展品") ? `展品(${Math.max(1, resourceTypes.length)}/20)` : ""}` } : template));
+  function applyScope(templateIds: string[], resourceTypes: string[], applyTo: TargetType[]) {
+    setTemplates(current => current.map(template => templateIds.includes(template.id) ? { ...template, resourceTypes, applyTo, scope: getScopeLabel(applyTo, resourceTypes) } : template));
     setSelectedIds(new Set());
     setDialog(null);
   }
@@ -345,27 +500,15 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
               <label className="fl-admin-status-filter">适用对象
                 <select value={applyToFilter} onChange={event => { setApplyToFilter(event.target.value); setPage(1); }}>
                   <option>全部对象</option>
-                  <option>资源</option>
-                  <option>展品</option>
+                  {targetTypeOptions.map(item => <option key={item}>{item}</option>)}
                 </select>
               </label>
-              <div className="fl-admin-tag-filter">
-                <span>资源类型</span>
-                {["图片", "插画", "音乐", "音频"].map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    className={`fl-admin-filter-chip ${scopeFilter.has(type) ? "active" : ""}`}
-                    onClick={() => {
-                      setScopeFilter(current => toggleSetValue(current, type));
-                      setSelectedIds(new Set());
-                      setPage(1);
-                    }}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
+              <TreeMultiSelect
+                label="资源类型"
+                nodes={resourceTypeTree}
+                value={scopeFilter}
+                onChange={value => { setScopeFilter(value); setSelectedIds(new Set()); setPage(1); }}
+              />
               <label className="fl-admin-status-filter">状态
                 <select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}>
                   <option>全部状态</option>
@@ -408,10 +551,7 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
                     <td>{template.code}</td>
                     <td><AuthTemplateName template={template} /></td>
                     <td>
-                      <div className="fl-admin-auth-scope">
-                        <strong>{template.scope}</strong>
-                        <span>{template.resourceTypes.join(" / ")}</span>
-                      </div>
+                      <AuthTemplateScope template={template} />
                     </td>
                     <td><span className={`fl-admin-status ${statusClass(template.status)}`}>{template.status}</span></td>
                     <td>
@@ -454,28 +594,62 @@ function AdminAuthTemplatesPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => 
   );
 }
 
+function WorkTypePicker({ targets, value, onChange }: { targets: Set<string>; value: Set<string>; onChange: (value: Set<string>) => void }) {
+  const groups = workTypeGroupsFor(targets);
+  const leafIds = groups.flatMap(group => group.children?.length ? group.children.map(child => child.id) : [group.id]);
+  const allSelected = leafIds.length > 0 && leafIds.every(id => value.has(id));
+  function toggleAll() { onChange(allSelected ? new Set() : new Set(leafIds)); }
+  function toggle(id: string) { const next = new Set(value); next.has(id) ? next.delete(id) : next.add(id); onChange(next); }
+  return (
+    <fieldset className="fl-admin-auth-fieldset resource-types">
+      <legend className="fl-admin-work-type-legend"><span>适用作品类型</span>{groups.length ? <span className="fl-admin-select-actions"><label className="fl-admin-select-all"><input type="checkbox" checked={allSelected} onChange={toggleAll} /> 全选</label><button className="fl-admin-link-button" type="button" disabled={!value.size} onClick={() => onChange(new Set())}>清空已选</button></span> : null}</legend>
+      {!groups.length ? <p className="fl-admin-empty-hint">请先选择适用标的物类型</p> : null}
+      {groups.map(group => (
+        <div className="fl-admin-work-type-group" key={group.id}>
+          <strong>{group.label}</strong>
+          <div>{group.children?.length ? group.children.map(child => <label key={child.id}><input type="checkbox" checked={value.has(child.id)} onChange={() => toggle(child.id)} /> {child.label}</label>) : <label><input type="checkbox" checked={value.has(group.id)} onChange={() => toggle(group.id)} /> {group.label}</label>}</div>
+        </div>
+      ))}
+    </fieldset>
+  );
+}
+
 function AuthTemplateFormPage({ mode, template, onCancel, onSave }: { mode: "create" | "edit"; template: AdminAuthTemplate; onCancel: () => void; onSave: (template: AdminAuthTemplate) => void }) {
   const [name, setName] = useState(template.name);
-  const [status, setStatus] = useState<"已启用" | "已停用">(template.status);
+  const [status, setStatus] = useState<"" | "已启用" | "已停用">(mode === "create" ? "" : template.status);
   const [applyTo, setApplyTo] = useState<Set<string>>(() => new Set(template.applyTo));
   const [resourceTypes, setResourceTypes] = useState<Set<string>>(() => new Set(template.resourceTypes));
   const [policyCode, setPolicyCode] = useState(template.policyCode);
   const [policyTranslation, setPolicyTranslation] = useState(template.policyTranslation);
-  const [dynamicTranslation, setDynamicTranslation] = useState(template.dynamicTranslation);
+  const [dynamicTranslations, setDynamicTranslations] = useState<DynamicTranslationRow[]>(() => parseDynamicTranslations(template.dynamicTranslation));
+  const [formError, setFormError] = useState("");
+
+  const isDirty = JSON.stringify({ name, status, applyTo: [...applyTo].sort(), resourceTypes: [...resourceTypes].sort(), policyCode, policyTranslation, dynamicTranslations }) !== JSON.stringify({ name: template.name, status: mode === "create" ? "" : template.status, applyTo: [...template.applyTo].sort(), resourceTypes: [...template.resourceTypes].sort(), policyCode: template.policyCode, policyTranslation: template.policyTranslation, dynamicTranslations: parseDynamicTranslations(template.dynamicTranslation) });
 
   function handleSave() {
-    const nextApplyTo = ([...applyTo].filter(Boolean) as ("资源" | "展品")[]);
+    const missingFields: string[] = [];
+    if (!name.trim()) missingFields.push("名称");
+    if (!status) missingFields.push("是否启用");
+    if (!policyCode.trim()) missingFields.push("策略代码");
+    if (!policyTranslation.trim()) missingFields.push("策略翻译 (zh-CN)");
+    if (!applyTo.size) missingFields.push("适用标的物类型");
+    if (!resourceTypes.size) missingFields.push("适用作品类型");
+    if (missingFields.length) {
+      setFormError(`请填写必填项：${missingFields.join("、")}`);
+      return;
+    }
+    const nextApplyTo = ([...applyTo].filter(Boolean) as TargetType[]);
     const nextTypes = [...resourceTypes];
     onSave({
       ...template,
       name: name || "未命名模板",
-      status,
-      applyTo: nextApplyTo.length ? nextApplyTo : ["资源"],
-      resourceTypes: nextTypes.length ? nextTypes : ["图片"],
-      scope: `${nextApplyTo.includes("资源") ? `资源(${Math.max(1, nextTypes.length * 2)}/20)` : ""}${nextApplyTo.length === 2 ? " · " : ""}${nextApplyTo.includes("展品") ? `展品(${Math.max(1, nextTypes.length)}/20)` : ""}`,
+      status: status as "已启用" | "已停用",
+      applyTo: nextApplyTo,
+      resourceTypes: nextTypes,
+      scope: getScopeLabel(nextApplyTo, nextTypes),
       policyCode,
       policyTranslation,
-      dynamicTranslation,
+      dynamicTranslation: dynamicTranslations.filter(item => item.event.trim() || item.translation.trim()).map(item => `${item.event.trim()}：${item.translation.trim()}`).join("\n"),
       updatedAt: "2026-09-15 12:00"
     });
   }
@@ -488,8 +662,10 @@ function AuthTemplateFormPage({ mode, template, onCancel, onSave }: { mode: "cre
           <h2>{mode === "create" ? "新建授权策略模板" : "编辑授权策略模板"}</h2>
           <p>{mode === "create" ? `将创建 ${template.code}。核心条目的长表单创建使用独立页面承载，保存后返回模板列表。` : `正在编辑 ${template.code} · ${template.name}。长表单编辑使用独立页面承载，保存后返回模板列表。`}</p>
         </div>
-        <button className="fl-admin-secondary-button" type="button" onClick={onCancel}>返回列表</button>
+        <EditPageActions isDirty={isDirty} onCancel={onCancel} onSave={handleSave} />
       </div>
+
+      <FormErrorBanner message={formError} />
 
       <section className="fl-admin-panel fl-admin-edit-page">
         <div className="fl-admin-edit-form-header">
@@ -502,42 +678,45 @@ function AuthTemplateFormPage({ mode, template, onCancel, onSave }: { mode: "cre
 
         <div className="fl-admin-auth-form fl-admin-auth-form-page">
           <label className="fl-admin-dialog-field">是否启用
-            <select value={status} onChange={event => setStatus(event.target.value as "已启用" | "已停用")}>
+            <select value={status} onChange={event => { setStatus(event.target.value as "" | "已启用" | "已停用"); setFormError(""); }}>
+              <option value="">请选择</option>
               <option value="已启用">启用</option>
               <option value="已停用">停用</option>
             </select>
             <small>{status === "已启用" ? "在用户端策略模板库中显示，用户在创建授权策略时可使用此模板" : "在用户端策略模板库中隐藏"}</small>
           </label>
-          <label className="fl-admin-dialog-field">名称<input value={name} onChange={event => setName(event.target.value)} placeholder="请输入授权策略模板名称" /></label>
-          <label className="fl-admin-dialog-field wide">策略代码<textarea value={policyCode} onChange={event => setPolicyCode(event.target.value)} rows={9} /></label>
-          <label className="fl-admin-dialog-field">策略翻译 (zh-CN)<textarea value={policyTranslation} onChange={event => setPolicyTranslation(event.target.value)} rows={4} /></label>
-          <label className="fl-admin-dialog-field">动态记录翻译 (zh-CN)【选填】<textarea value={dynamicTranslation} onChange={event => setDynamicTranslation(event.target.value)} rows={4} /></label>
+          <label className="fl-admin-dialog-field">名称<input value={name} onChange={event => { setName(event.target.value); setFormError(""); }} placeholder="请输入授权策略模板名称" /></label>
+          <label className="fl-admin-dialog-field fl-admin-code-field">策略代码<div className="fl-admin-code-editor-shell"><div className="fl-admin-code-line-numbers" aria-hidden="true">{policyCode.split("\n").map((_, index) => <span key={index}>{index + 1}</span>)}</div><textarea className="fl-admin-code-editor" value={policyCode} onChange={event => { setPolicyCode(event.target.value); setFormError(""); }} rows={9} spellCheck={false} /></div></label>
+          <label className="fl-admin-dialog-field fl-admin-translation-field">策略翻译 (zh-CN)<textarea className="fl-admin-translation-editor" value={policyTranslation} onChange={event => { setPolicyTranslation(event.target.value); setFormError(""); }} rows={9} /></label>
+          <div className="fl-admin-dialog-field fl-admin-dynamic-translation">
+            <span>动态记录翻译 (zh-CN) <small className="fl-admin-field-hint">（选填）</small></span>
+            <div className="fl-admin-dynamic-list">
+              {dynamicTranslations.map((row, index) => <div className="fl-admin-dynamic-row" key={row.id}>
+                <span className="fl-admin-dynamic-index" aria-label={`第 ${index + 1} 条`}>{index + 1}</span>
+                <label>事件定位<input value={row.event} onChange={event => setDynamicTranslations(current => current.map(item => item.id === row.id ? { ...item, event: event.target.value } : item))} placeholder="请输入事件定位" /></label>
+                <label>翻译<input value={row.translation} onChange={event => setDynamicTranslations(current => current.map(item => item.id === row.id ? { ...item, translation: event.target.value } : item))} placeholder="请输入翻译内容" /></label>
+                <button className="fl-admin-link-button fl-admin-dynamic-delete" type="button" onClick={() => setDynamicTranslations(current => current.filter(item => item.id !== row.id))}>删除</button>
+              </div>)}
+            </div>
+            <button className="fl-admin-secondary-button fl-admin-dynamic-add" type="button" onClick={() => setDynamicTranslations(current => [...current, { id: `dynamic-${Date.now()}`, event: "", translation: "" }])}>+ 新增</button>
+          </div>
         </div>
 
         <div className="fl-admin-edit-form-section">
           <div>
             <strong>适用范围</strong>
-            <span>选择该模板应用于资源或展品，并配置可使用的资源类型。</span>
+            <span>先选择适用标的物类型，再配置对应的适用作品类型。</span>
           </div>
           <fieldset className="fl-admin-auth-fieldset">
-            <legend>应用于</legend>
-            {["资源", "展品"].map(item => <label key={item}><input type="checkbox" checked={applyTo.has(item)} onChange={() => setApplyTo(current => toggleSetValue(current, item))} /> {item}</label>)}
+            <legend>适用标的物类型</legend>
+            {targetTypeOptions.map(item => <label key={item}><input type="checkbox" checked={applyTo.has(item)} onChange={() => {
+              setFormError("");
+              setApplyTo(current => { const next = toggleSetValue(current, item); const allowed = new Set(workTypeIds(workTypeGroupsFor(next))); setResourceTypes(types => new Set([...types].filter(type => allowed.has(type)))); return next; });
+            }} /> {item}</label>)}
           </fieldset>
-          <fieldset className="fl-admin-auth-fieldset resource-types">
-            <legend>适用资源类型</legend>
-            {adminResourceTypeOptions.map(type => <label key={type}><input type="checkbox" checked={resourceTypes.has(type)} onChange={() => setResourceTypes(current => toggleSetValue(current, type))} /> {type}</label>)}
-          </fieldset>
-          <div className="fl-admin-dialog-actions">
-            <button className="fl-admin-link-button" type="button" onClick={() => setResourceTypes(new Set(adminResourceTypeOptions))}>全选</button>
-            <span>|</span>
-            <button className="fl-admin-link-button" type="button" onClick={() => setResourceTypes(new Set())}>全不选</button>
-          </div>
+          <WorkTypePicker targets={applyTo} value={resourceTypes} onChange={value => { setResourceTypes(value); setFormError(""); }} />
         </div>
 
-        <footer className="fl-admin-edit-page-footer">
-          <button className="fl-admin-secondary-button" type="button" onClick={onCancel}>取消</button>
-          <button className="fl-admin-button" type="button" onClick={handleSave}>保存</button>
-        </footer>
       </section>
     </>
   );
@@ -556,11 +735,11 @@ function AuthTemplateDialogView({
   selectedTemplates: AdminAuthTemplate[];
   onClose: () => void;
   onDelete: (templateId: string) => void;
-  onApplyScope: (templateIds: string[], resourceTypes: string[], applyTo: ("资源" | "展品")[]) => void;
+  onApplyScope: (templateIds: string[], resourceTypes: string[], applyTo: TargetType[]) => void;
 }) {
   const existing = "templateId" in dialog ? templates.find(template => template.id === dialog.templateId) : undefined;
   const [applyTo, setApplyTo] = useState<Set<string>>(() => new Set(["资源"]));
-  const [resourceTypes, setResourceTypes] = useState<Set<string>>(() => new Set(["图片"]));
+  const [resourceTypes, setResourceTypes] = useState<Set<string>>(() => new Set(["插画"]));
 
   if (dialog.type === "preview" && existing) {
     return (
@@ -600,27 +779,17 @@ function AuthTemplateDialogView({
       <div className="fl-admin-modal-backdrop">
         <section className="fl-admin-modal fl-admin-auth-form-modal" role="dialog" aria-modal="true">
           <h3>修改适用范围</h3>
-          <p>为已选中的 {targetTemplates.length} 条授权策略模板设置适用对象和资源类型。</p>
+          <p>为已选中的 {targetTemplates.length} 条授权策略模板设置适用标的物类型和作品类型。</p>
           <fieldset className="fl-admin-auth-fieldset">
-            <legend>应用于</legend>
-            {["资源", "展品"].map(item => (
-              <label key={item}><input type="checkbox" checked={applyTo.has(item)} onChange={() => setApplyTo(current => toggleSetValue(current, item))} /> {item}</label>
+            <legend>适用标的物类型</legend>
+            {targetTypeOptions.map(item => (
+              <label key={item}><input type="checkbox" checked={applyTo.has(item)} onChange={() => setApplyTo(current => { const next = toggleSetValue(current, item); const allowed = new Set(workTypeIds(workTypeGroupsFor(next))); setResourceTypes(types => new Set([...types].filter(type => allowed.has(type)))); return next; })} /> {item}</label>
             ))}
           </fieldset>
-          <fieldset className="fl-admin-auth-fieldset resource-types">
-            <legend>适用资源类型</legend>
-            {adminResourceTypeOptions.map(type => (
-              <label key={type}><input type="checkbox" checked={resourceTypes.has(type)} onChange={() => setResourceTypes(current => toggleSetValue(current, type))} /> {type}</label>
-            ))}
-          </fieldset>
-          <div className="fl-admin-dialog-actions">
-            <button className="fl-admin-link-button" type="button" onClick={() => setResourceTypes(new Set(adminResourceTypeOptions))}>全选</button>
-            <span>|</span>
-            <button className="fl-admin-link-button" type="button" onClick={() => setResourceTypes(new Set())}>全不选</button>
-          </div>
+          <WorkTypePicker targets={applyTo} value={resourceTypes} onChange={setResourceTypes} />
           <footer>
             <button className="fl-admin-secondary-button" type="button" onClick={onClose}>取消</button>
-            <button className="fl-admin-button" type="button" onClick={() => onApplyScope(dialog.templateIds, [...resourceTypes], ([...applyTo].filter(Boolean) as ("资源" | "展品")[]))}>保存</button>
+            <button className="fl-admin-button" type="button" onClick={() => onApplyScope(dialog.templateIds, [...resourceTypes], ([...applyTo].filter(Boolean) as TargetType[]))}>保存</button>
           </footer>
         </section>
       </div>
@@ -1022,11 +1191,10 @@ export function AdminPrototypePage({ initialPageId = "admin-users", onNavigate, 
           </aside>
           <section className="fl-admin-workspace">
             <header className="fl-admin-topbar">
-              <div className="fl-admin-breadcrumb"><span>{meta.group}</span><span>/</span><strong>{meta.label}</strong></div>
               <div className="flex items-center gap-2 text-sm text-muted"><span className="grid h-8 w-8 place-items-center rounded-full bg-ink text-xs font-bold text-white">AD</span><strong>Admin</strong></div>
             </header>
             <main className="fl-admin-content">
-              {activePageId === "admin-dashboard" ? <AdminDashboard onOpenPrd={onOpenPrd} /> : activePageId === "admin-users" ? <AdminUsersPage onOpenPrd={onOpenPrd} /> : activePageId === "admin-auth-templates" ? <AdminAuthTemplatesPage onOpenPrd={onOpenPrd} /> : <AdminGenericList pageId={activePageId} />}
+              {activePageId === "admin-dashboard" ? <AdminDashboard onOpenPrd={onOpenPrd} /> : activePageId === "admin-users" ? <AdminUsersPage onOpenPrd={onOpenPrd} /> : activePageId === "admin-auth-templates" ? <AdminAuthTemplatesPage onOpenPrd={onOpenPrd} /> : activePageId === "admin-review-policies" ? <AdminReviewPoliciesPage onOpenPrd={onOpenPrd} /> : <AdminGenericList pageId={activePageId} />}
             </main>
           </section>
         </div>

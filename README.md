@@ -44,19 +44,17 @@ pnpm dev
 
 ## 如何同步 Prototype as PRD 框架升级
 
-`Prototype as PRD` 框架源目录位于上级目录：
+本项目通过 Git 版本依赖安装 `Prototype as PRD`，不依赖本机相邻目录。当前依赖版本在 `package.json` 中指定，框架同步范围和保护范围在 `prototype-framework.json` 中维护。
 
-```text
-C:/Users/Windows/Documents/ChatGPT/FL Admin Prototype/Prototype as PRD
-```
-
-当该框架后续新增功能或优化已有功能时，可在本项目目录运行：
+当框架后续新增功能或优化已有功能时，项目需要手动修改 `package.json` 中的 Git ref（branch、tag 或 commit），然后运行：
 
 ```powershell
+pnpm install
 pnpm sync:prd-framework
+pnpm build
 ```
 
-同步脚本只更新框架层文件，例如 `src/components`、`src/hooks`、`src/layout`、`src/types`、`src/utils` 和基础配置。项目专属文件会保留，包括：
+同步脚本只从已安装的 `node_modules/prototype-as-prd` 单向更新框架白名单。它不会读取或写入本机相邻的 `Prototype as PRD` 目录，也不会覆盖项目专属文件，包括：
 
 - `src/pages/admin`
 - `src/mockData/adminPrototype.ts`
@@ -64,6 +62,8 @@ pnpm sync:prd-framework
 - `src/mockData/prdNotes.ts`
 - `src/mockData/versions.ts`
 - `src/App.tsx`
+
+项目不会覆盖 `Prototype as PRD` 框架仓库。框架升级必须由项目明确指定版本并手动执行安装和同步。
 
 同步后需要根据框架新增能力，手动检查 `src/App.tsx`、`src/mockData/pageTree.ts`、`src/mockData/prdNotes.ts` 和 `src/mockData/versions.ts` 是否需要补接入口或更新标注。
 

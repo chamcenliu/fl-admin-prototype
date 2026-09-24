@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUp, FolderPlus, Pencil, Search, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, FolderPlus, Pencil, Search, Trash2, X } from "lucide-react";
 import type { DragEvent } from "react";
 import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -206,7 +206,7 @@ function SidebarNode({
           onDragLeave={() => setDropPlacement(null)}
           onDrop={handleDrop}
           className={cn(
-            "group mb-1 grid min-h-10 w-full cursor-grab grid-cols-[24px_1fr_auto] items-center gap-2 px-2 text-sm font-bold text-ink transition hover:bg-slate-50 active:cursor-grabbing",
+            "group mb-1 grid min-h-10 w-full cursor-grab grid-cols-[1fr_auto] items-center gap-2 px-2 text-sm font-bold text-ink transition hover:bg-slate-50 active:cursor-grabbing",
             dropPlacement === "inside" && "bg-brand-soft text-brand-dark outline outline-1 outline-brand",
             collapsed && "grid-cols-1 justify-items-center px-0"
           )}
@@ -215,17 +215,21 @@ function SidebarNode({
         >
           <button
             type="button"
-            className="grid h-6 w-6 place-items-center text-muted transition hover:text-ink"
-            style={{ borderRadius: 8 }}
+            className={cn(
+              "grid min-h-9 min-w-0 grid-cols-[24px_1fr] items-center gap-2 border-0 bg-transparent p-0 text-left text-sm font-bold text-inherit",
+              collapsed && "grid-cols-1 justify-items-center"
+            )}
             aria-label={isFolderCollapsed ? `展开${node.title}` : `收起${node.title}`}
             onClick={event => {
               event.stopPropagation();
               onToggleFolder(node.id);
             }}
           >
-            {Icon && isFolderCollapsed ? <Icon className="h-4 w-4" /> : <ChevronDown className={cn("h-4 w-4 transition", isFolderCollapsed && "-rotate-90")} />}
+            <span className="grid h-6 w-6 place-items-center text-muted transition hover:text-ink" style={{ borderRadius: 8 }}>
+              <ChevronDown className={cn("h-4 w-4 transition", isFolderCollapsed && "-rotate-90")} />
+            </span>
+            {!collapsed ? <span className="truncate">{node.title}</span> : null}
           </button>
-          {!collapsed ? <span className="truncate">{node.title}</span> : null}
           {!collapsed ? (
             <span className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
               <IconButton
@@ -315,6 +319,9 @@ export function Sidebar(props: SidebarProps) {
     ]);
   }
 
+  const allFolderIds = collectFolderIds(props.tree);
+  const allFoldersCollapsed = allFolderIds.length > 0 && allFolderIds.every(folderId => collapsedFolderIds.has(folderId));
+
   return (
     <aside className="sticky top-16 flex h-[calc(100vh-4rem)] flex-col border-r border-line bg-white">
       <div className="flex h-16 items-center gap-3 border-b border-line px-4">
@@ -327,9 +334,9 @@ export function Sidebar(props: SidebarProps) {
         <div className="flex items-center gap-2">
           {!props.collapsed ? (
             <IconButton
-              label="收起所有文件夹"
-              icon={<ChevronsUp className="h-4 w-4" />}
-              onClick={() => setCollapsedFolderIds(new Set(collectFolderIds(props.tree)))}
+              label={allFoldersCollapsed ? "展开所有文件夹" : "收起所有文件夹"}
+              icon={allFoldersCollapsed ? <ChevronsDown className="h-4 w-4" /> : <ChevronsUp className="h-4 w-4" />}
+              onClick={() => setCollapsedFolderIds(allFoldersCollapsed ? new Set() : new Set(allFolderIds))}
             />
           ) : null}
           <IconButton label={props.collapsed ? "展开侧边栏" : "收起侧边栏"} icon={props.collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />} onClick={props.onToggle} />

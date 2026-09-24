@@ -1,50 +1,36 @@
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const currentDir = dirname(fileURLToPath(import.meta.url));
-const appRoot = resolve(currentDir, "..");
-const frameworkRoot = resolve(appRoot, "..", "Prototype as PRD");
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const appRoot = resolve(scriptDir, "..");
+const config = JSON.parse(readFileSync(join(appRoot, "prototype-framework.json"), "utf8"));
+const dependencyRoot = resolve(appRoot, "node_modules", config.dependency);
 
-const frameworkPaths = [
-  "index.html",
-  "pnpm-lock.yaml",
-  "pnpm-workspace.yaml",
-  "postcss.config.js",
-  "tailwind.config.js",
-  "tsconfig.json",
-  "vite.config.ts",
-  "src/components",
-  "src/hooks",
-  "src/layout",
-  "src/types",
-  "src/utils",
-  "src/index.css",
-  "src/main.tsx",
-  "src/pages/VersionsPage.tsx",
-  "src/pages/examples",
-  "src/mockData/orders.ts"
-];
-
-if (!existsSync(frameworkRoot)) {
-  throw new Error(`Prototype as PRD framework directory was not found: ${frameworkRoot}`);
+if (!existsSync(dependencyRoot)) {
+  throw new Error(`Framework dependency is not installed: ${config.dependency}. Run "pnpm install" first.`);
 }
 
-for (const relativePath of frameworkPaths) {
-  const source = join(frameworkRoot, relativePath);
+const protectedPaths = new Set(config.protectedProjectPaths);
+
+for (const relativePath of config.frameworkPaths) {
+  if ([...protectedPaths].some(path => relativePath === path || relativePath.startsWith(`${path}/`))) {
+    throw new Error(`Invalid framework configuration: ${relativePath} overlaps a protected project path.`);
+  }
+
+  const source = join(dependencyRoot, relativePath);
   const target = join(appRoot, relativePath);
-  if (!existsSync(source)) continue;
+
+  if (!existsSync(source)) {
+    throw new Error(`Framework file is missing from ${config.dependency}: ${relativePath}`);
+  }
 
   rmSync(target, { recursive: true, force: true });
   mkdirSync(dirname(target), { recursive: true });
   cpSync(source, target, { recursive: true });
 }
 
-console.log("Prototype-as-PRD framework files synced.");
-console.log("Project-specific files are intentionally preserved:");
-console.log("- src/pages/admin");
-console.log("- src/mockData/adminPrototype.ts");
-console.log("- src/mockData/pageTree.ts");
-console.log("- src/mockData/prdNotes.ts");
-console.log("- src/mockData/versions.ts");
-console.log("- src/App.tsx");
+console.log(`Synced Prototype as PRD from ${config.dependency}.`);
+console.log(`Source: ${relative(appRoot, dependencyRoot)}`);
+console.log(`Updated ${config.frameworkPaths.length} framework paths.`);
+console.log("Project-specific paths were not touched.");

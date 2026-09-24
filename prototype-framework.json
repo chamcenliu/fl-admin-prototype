@@ -1,0 +1,29 @@
+{
+  "repository": "https://github.com/chamcenliu/prototype-as-prd.git",
+  "dependency": "prototype-as-prd",
+  "frameworkPaths": [
+    "src/components/prd",
+    "src/components/ui",
+    "src/components/version",
+    "src/hooks/usePageTree.ts",
+    "src/layout",
+    "src/types",
+    "src/utils",
+    "src/index.css",
+    "src/main.tsx",
+    "src/pages/VersionsPage.tsx",
+    "src/pages/examples",
+    "src/mockData/orders.ts"
+  ],
+  "protectedProjectPaths": [
+    "src/App.tsx",
+    "src/components/admin",
+    "src/config",
+    "src/hooks/useIterations.ts",
+    "src/mockData/adminPrototype.ts",
+    "src/mockData/pageTree.ts",
+    "src/mockData/prdNotes.ts",
+    "src/mockData/versions.ts",
+    "src/pages/admin"
+  ]
+}

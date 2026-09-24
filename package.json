@@ -19,7 +19,8 @@
     "postcss": "^8.4.49",
     "autoprefixer": "^10.4.20",
     "lucide-react": "^0.468.0",
-    "framer-motion": "^11.15.0"
+    "framer-motion": "^11.15.0",
+    "prototype-as-prd": "git+https://github.com/chamcenliu/prototype-as-prd.git#main"
   },
   "devDependencies": {
     "@types/react": "^19.0.2",

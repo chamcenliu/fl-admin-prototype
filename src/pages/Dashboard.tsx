@@ -1,7 +1,6 @@
-import { Archive, ArrowRight, GitCommitHorizontal, LayoutDashboard } from "lucide-react";
+import { Archive, ArrowRight, GitCommitHorizontal } from "lucide-react";
 import { iterationVersions } from "../mockData/versions";
 import { pageTree } from "../mockData/pageTree";
-import { Button } from "../components/ui/Button";
 
 export function Dashboard({ onOpenPage }: { onOpenPage: (pageId: string) => void }) {
   const activeVersion = iterationVersions.find(item => item.status === "active")!;
@@ -15,7 +14,6 @@ export function Dashboard({ onOpenPage }: { onOpenPage: (pageId: string) => void
             <h2 className="text-2xl font-bold">团队云端原型工作台</h2>
             <p className="mt-2 max-w-2xl text-sm leading-7 text-muted">页面、需求标注和迭代记录在同一个前端项目内同步演进。PM 看需求闭环，研发看接入边界，QA 看验收口径。</p>
           </div>
-          <Button variant="primary" icon={<LayoutDashboard className="h-4 w-4" />} onClick={() => onOpenPage("order-approval")}>打开示例页</Button>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
