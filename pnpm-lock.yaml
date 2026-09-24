@@ -23,9 +23,6 @@ importers:
       postcss:
         specifier: ^8.4.49
         version: 8.5.28
-      prototype-as-prd:
-        specifier: git+https://github.com/chamcenliu/prototype-as-prd.git#main
-        version: git+https://github.com/chamcenliu/prototype-as-prd.git#e0648e3e0619ae4f52e6906bf3a3657d42c45f55(jiti@1.21.7)
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -48,6 +45,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.2
         version: 19.2.7(@types/react@19.2.18)
+      prototype-as-prd:
+        specifier: git+https://github.com/chamcenliu/prototype-as-prd.git#main
+        version: git+https://github.com/chamcenliu/prototype-as-prd.git#e0648e3e0619ae4f52e6906bf3a3657d42c45f55(jiti@1.21.7)
 
 packages:
 

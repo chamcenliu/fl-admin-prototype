@@ -33,7 +33,7 @@ jobs:
           version: 12.6.0
           run_install: false
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --prod --frozen-lockfile
       - name: Build static prototype
         run: pnpm build
       - name: Configure Pages
