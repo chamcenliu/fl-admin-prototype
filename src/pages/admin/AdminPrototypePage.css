@@ -875,8 +875,7 @@
 }
 
 .fl-admin-edit-form-header,
-.fl-admin-edit-form-section,
-.fl-admin-edit-page-footer {
+.fl-admin-edit-form-section {
   padding: 20px 24px;
 }
 
@@ -1052,14 +1051,6 @@
 
 .fl-admin-edit-form-section {
   border-top: 1px solid var(--admin-line);
-}
-
-.fl-admin-edit-page-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  border-top: 1px solid var(--admin-line);
-  background: #fbfcfd;
 }
 
 .fl-admin-code-preview {

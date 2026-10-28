@@ -32,6 +32,10 @@ import { TreeMultiSelect, expandTreeSelection, type TreeMultiSelectNode } from "
 import { EditPageActions } from "../../components/admin/EditPageActions";
 import { FormErrorBanner } from "../../components/admin/FormErrorBanner";
 import "./AdminPrototypePage.css";
+import { ActivityRewardsPage } from "./ActivityRewardsPage";
+import { RewardWinnerManagement } from "./RewardWinnerManagement";
+import { activityRewards } from "../../mockData/activityRewards";
+import { rewardWinnerUsers } from "../../mockData/activityRewardWinners";
 
 type AdminDialog =
   | { type: "tags"; userIds: string[] }
@@ -821,11 +825,11 @@ function UserTags({ user, onRemoveTag, onAddTags }: { user: AdminUser; onRemoveT
   );
 }
 
-function AdminUsersPage({ onOpenPrd }: { onOpenPrd: (noteId: string) => void }) {
+function AdminUsersPage({ onOpenPrd, initialQuery = "" }: { onOpenPrd: (noteId: string) => void; initialQuery?: string }) {
   const [users, setUsers] = useState<AdminUser[]>(() => adminUsers.map(user => ({ ...user, tags: [...user.tags], contacts: [...user.contacts] })));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const [queryDraft, setQueryDraft] = useState("");
-  const [query, setQuery] = useState("");
+  const [queryDraft, setQueryDraft] = useState(initialQuery);
+  const [query, setQuery] = useState(initialQuery);
   const [tagFilters, setTagFilters] = useState<Set<string>>(() => new Set());
   const [sort, setSort] = useState("recent");
   const [dateActive, setDateActive] = useState(false);
@@ -1194,7 +1198,7 @@ export function AdminPrototypePage({ initialPageId = "admin-users", onNavigate, 
               <div className="flex items-center gap-2 text-sm text-muted"><span className="grid h-8 w-8 place-items-center rounded-full bg-ink text-xs font-bold text-white">AD</span><strong>Admin</strong></div>
             </header>
             <main className="fl-admin-content">
-              {activePageId === "admin-dashboard" ? <AdminDashboard onOpenPrd={onOpenPrd} /> : activePageId === "admin-users" ? <AdminUsersPage onOpenPrd={onOpenPrd} /> : activePageId === "admin-auth-templates" ? <AdminAuthTemplatesPage onOpenPrd={onOpenPrd} /> : activePageId === "admin-review-policies" ? <AdminReviewPoliciesPage onOpenPrd={onOpenPrd} /> : <AdminGenericList pageId={activePageId} />}
+              {activePageId === "admin-dashboard" ? <AdminDashboard onOpenPrd={onOpenPrd} /> : activePageId === "admin-users" ? <AdminUsersPage onOpenPrd={onOpenPrd} initialQuery={new URLSearchParams(window.location.hash.split("?")[1] || "").get("query") || ""} /> : activePageId === "admin-auth-templates" ? <AdminAuthTemplatesPage onOpenPrd={onOpenPrd} /> : activePageId === "admin-review-policies" ? <AdminReviewPoliciesPage onOpenPrd={onOpenPrd} /> : activePageId === "admin-activity-rewards" ? <ActivityRewardsPage onOpenPrd={onOpenPrd} /> : activePageId === "admin-activity-reward-winners" ? <RewardWinnerManagement reward={activityRewards.find(item => item.id === "RS000804") || activityRewards[0]} initialWinners={rewardWinnerUsers.RS000804 || []} onClose={() => onNavigate?.("admin-activity-rewards")} onEdit={() => onNavigate?.("admin-activity-rewards")} onGoRewards={() => onNavigate?.("admin-activity-rewards")} onSaveWinners={() => undefined} onOpenPrd={onOpenPrd} /> : <AdminGenericList pageId={activePageId} />}
             </main>
           </section>
         </div>

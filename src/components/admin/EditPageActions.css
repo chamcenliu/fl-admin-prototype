@@ -1,1 +1,44 @@
-.fl-admin-edit-page-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.fl-admin-edit-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.fl-admin-edit-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, .42);
+}
+
+.fl-admin-edit-confirm {
+  width: min(460px, 100%);
+  padding: 24px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .22);
+}
+
+.fl-admin-edit-confirm h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 18px;
+}
+
+.fl-admin-edit-confirm p {
+  margin: 10px 0 22px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.fl-admin-edit-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}

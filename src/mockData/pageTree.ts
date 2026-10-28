@@ -51,6 +51,8 @@ export const pageTree: PageNode[] = [
         icon: Megaphone,
         children: [
           { id: "admin-campaigns", title: "活动管理", type: "page", status: "review", icon: Megaphone, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },
+          { id: "admin-activity-rewards", title: "活动奖励管理", type: "page", status: "ready", icon: Megaphone, sourceFile: "src/pages/admin/ActivityRewardsPage.tsx" },
+          { id: "admin-activity-reward-winners", title: "获奖名单管理", type: "page", status: "ready", icon: Megaphone, sourceFile: "src/pages/admin/RewardWinnerManagement.tsx" },
           { id: "admin-auth-templates", title: "授权策略模板管理", type: "page", status: "review", icon: Megaphone, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },
           { id: "admin-review-policies", title: "内容审核策略管理", type: "page", status: "review", icon: ShieldAlert, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },
           { id: "admin-version-review", title: "资源版本审核", type: "page", status: "draft", icon: ShieldAlert, sourceFile: "src/pages/admin/AdminPrototypePage.tsx" },

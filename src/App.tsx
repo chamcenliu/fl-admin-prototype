@@ -47,7 +47,7 @@ export default function App() {
 
   useEffect(() => {
     const readPageFromHash = () => {
-      const pageId = window.location.hash.replace("#/", "");
+      const pageId = window.location.hash.replace("#/", "").split("?")[0];
       if (pageId && pageTreeState.pageExists(pageId)) {
         pageTreeState.setActivePageId(pageId);
         return;

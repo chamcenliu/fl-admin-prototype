@@ -105,6 +105,8 @@ export const adminNavGroups = [
       { id: "admin-categories", label: "运营分类管理" },
       { id: "admin-topics", label: "专题管理" },
       { id: "admin-campaigns", label: "活动管理" },
+      { id: "admin-activity-rewards", label: "活动奖励管理" },
+      { id: "admin-activity-reward-winners", label: "获奖名单管理" },
       { id: "admin-ads", label: "站内广告管理" },
       { id: "admin-auth-templates", label: "授权策略模板管理" }
     ]
